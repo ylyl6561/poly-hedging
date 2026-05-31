@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "run": {
+    "mode": "live",
+    "run_folder": "/Users/yuliang/project/poly-refactor/poly-simmer-fast-loop/main/runs/2026-05-31-00-30-51_live",
+    "log_file": "/Users/yuliang/project/poly-refactor/poly-simmer-fast-loop/main/runs/2026-05-31-00-30-51_live/output.log",
+    "started_at": "2026-05-31 00:30:51.344",
+    "updated_at": "2026-05-31 00:30:59.617"
+  },
+  "scheduler": {},
+  "config": {},
+  "events": [],
+  "trades": [
+    {
+      "timestamp": "2026-05-31 00:30:59.617",
+      "line_no": 53,
+      "mode": "live",
+      "side": "YES",
+      "shares": 4.0,
+      "price": 0.51,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    }
+  ],
+  "results": [],
+  "summary": {
+    "events_seen": 0,
+    "paper_trades": 0,
+    "total_paper_amount_usd": 0.0,
+    "result_counts": {}
+  }
+}

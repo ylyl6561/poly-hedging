@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "run": {
+    "mode": "live",
+    "run_folder": "/Users/yuliang/project/poly-refactor/poly-simmer-fast-loop/main/runs/2026-05-31-00-43-26_live",
+    "log_file": "/Users/yuliang/project/poly-refactor/poly-simmer-fast-loop/main/runs/2026-05-31-00-43-26_live/output.log",
+    "started_at": "2026-05-31 00:43:26.456",
+    "updated_at": "2026-05-31 00:50:14.613"
+  },
+  "scheduler": {},
+  "config": {},
+  "events": [],
+  "trades": [
+    {
+      "timestamp": "2026-05-31 00:43:34.643",
+      "line_no": 54,
+      "mode": "live",
+      "side": "YES",
+      "shares": 5.0,
+      "price": 0.51,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    },
+    {
+      "timestamp": "2026-05-31 00:43:45.470",
+      "line_no": 56,
+      "mode": "live",
+      "side": "NO",
+      "shares": 5.0,
+      "price": 0.4,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    },
+    {
+      "timestamp": "2026-05-31 00:46:04.078",
+      "line_no": 120,
+      "mode": "live",
+      "side": "YES",
+      "shares": 5.0,
+      "price": 0.51,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    },
+    {
+      "timestamp": "2026-05-31 00:46:10.047",
+      "line_no": 122,
+      "mode": "live",
+      "side": "NO",
+      "shares": 5.0,
+      "price": 0.4,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    },
+    {
+      "timestamp": "2026-05-31 00:50:08.439",
+      "line_no": 218,
+      "mode": "live",
+      "side": "YES",
+      "shares": 5.0,
+      "price": 0.51,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    },
+    {
+      "timestamp": "2026-05-31 00:50:14.613",
+      "line_no": 220,
+      "mode": "live",
+      "side": "NO",
+      "shares": 5.0,
+      "price": 0.4,
+      "amount_usd": 0.0,
+      "event_key": [
+        null,
+        null,
+        null
+      ],
+      "question": null,
+      "window_start_utc": null,
+      "window_end_utc": null,
+      "market_id": null,
+      "execution_plan": null,
+      "trade_id": null,
+      "quote": null,
+      "judgement": null
+    }
+  ],
+  "results": [],
+  "summary": {
+    "events_seen": 0,
+    "paper_trades": 0,
+    "total_paper_amount_usd": 0.0,
+    "result_counts": {}
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "_comment_1": "本文件只包含与默认值不同的覆盖项。所有默认值在 config.py 的 CONFIG_SCHEMA 中定义。",
+  "_comment_2": "通用运行时配置：",
+  "candidate_journal_file": "runs/postflip08_observe_20260508T151105Z/candidate_journal.jsonl",
+  "_comment_3": "Oracle 延迟策略配置（oracle_latency 模式使用）："
+}

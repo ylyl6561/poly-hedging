@@ -123,7 +123,7 @@ def discover_fast_market_markets(asset="BTC", window="5m", use_simmer=True):
             seen_tokens.update(gtokens)
 
     if use_simmer and not has_deterministic_live:
-        timeout = float(os.environ.get("SIMMER_FASTLOOP_DISCOVERY_SIMMER_TIMEOUT_SEC", "1.5"))
+        timeout = float(os.environ.get("SIMMER_FASTLOOP_DISCOVERY_SIMMER_TIMEOUT_SEC", "5"))
         try:
             simmer_markets = _discover_simmer_markets_with_timeout(asset, window, timeout)
             if simmer_markets:
@@ -146,7 +146,10 @@ def discover_fast_market_markets(asset="BTC", window="5m", use_simmer=True):
     if simmer_market_ids:
         _enrich_simmer_markets_with_condition_ids(markets, asset, window)
 
-    return markets
+    now = datetime.now(timezone.utc)
+    window_seconds = WINDOW_SECONDS.get(window, 300)
+    filtered = [m for m in markets if _is_valid_market(m, now, window_seconds)]
+    return filtered
 
 
 def _discover_simmer_markets_with_timeout(asset, window, timeout_sec):
@@ -356,9 +359,21 @@ def discover_deterministic_slots(asset="BTC", window="5m"):
     return markets
 
 
-# =============================================================================
-# Market Selection
-# =============================================================================
+def _is_valid_market(market: dict, now: datetime, window_seconds: int) -> bool:
+    condition_id = (market.get("condition_id") or "").strip()
+    clob_token_ids = [str(t).strip() for t in (market.get("clob_token_ids") or []) if str(t).strip()]
+    if not condition_id:
+        return False
+    if len(clob_token_ids) < 2:
+        return False
+    end_time = market.get("end_time")
+    if not end_time:
+        return False
+    remaining = (end_time - now).total_seconds()
+    if remaining <= 0 or remaining > window_seconds * 2:
+        return False
+    return True
+
 
 def _enrich_simmer_markets_with_condition_ids(markets, asset, window):
     """Populate condition_id and slug for Simmer markets by looking up via Gamma API.

@@ -60,6 +60,11 @@ class PreopenEvent:
     last_action_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_refresh_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    # Budget guard cooldown (unix seconds). If set and now_ts < skip_until_ts,
+    # the executor should skip this event without re-checking balance.
+    skip_until_ts: float | None = None
+    skip_reason: str | None = None
+
     def can_transition(self, target: EventState) -> bool:
         return target in VALID_TRANSITIONS.get(self.state, set())
 
@@ -127,6 +132,8 @@ class PreopenEvent:
             "discovered_at": self.discovered_at.isoformat(),
             "last_action_at": self.last_action_at.isoformat(),
             "last_refresh_at": self.last_refresh_at.isoformat(),
+            "skip_until_ts": self.skip_until_ts,
+            "skip_reason": self.skip_reason,
         }
 
 

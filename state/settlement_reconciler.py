@@ -190,7 +190,6 @@ def reconcile_once(*, run_folder: str | Path, wallet_address: str | None = None)
             pnl_usd = _compute_final_pnl(side=side, shares=shares, price=price, outcome=str(outcome))
             pnl_source = "settlement_only"
 
-        # 1) Update Excel in-place (preferred report)
         try:
             update_trade_row(
                 xlsx_path=xlsx_path,
@@ -210,7 +209,6 @@ def reconcile_once(*, run_folder: str | Path, wallet_address: str | None = None)
         except Exception:
             pass
 
-        # 2) Append a settlement row to CSV (append-only audit trail)
         record = TradeRecord(
             recorded_at_utc=row.get("recorded_at_utc") or "",
             recorded_at=_now_local_hms(),
@@ -262,4 +260,4 @@ def run_loop(*, run_folder: str | Path, interval_sec: int = 120, quiet: bool = T
         except Exception as exc:
             if not quiet:
                 print(f"[settlement] error: {exc}")
-        time.sleep(max(10, int(interval_sec)))
+        time.sleep(interval_sec)

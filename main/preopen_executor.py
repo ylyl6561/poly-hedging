@@ -9,18 +9,23 @@ Orchestrates:
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import time
 from enum import Enum
+
+from trading import get_portfolio
 
 from api import fetch_side_orderbook_price, direct_polymarket_trade, cancel_order
 from core import (
     PREOPEN_YES_SHARES_X, PREOPEN_YES_MAX_PRICE,
     PREOPEN_HEDGE_RATIO, PREOPEN_DOWN_RESTING_PRICE,
-    PREOPEN_DOWN_SWITCH_TTL_SEC, PREOPEN_DOWN_FAK_MAX_PRICE,
+    PREOPEN_DOWN_SWITCH_TTL_SEC, PREOPEN_DOWN_ENTRY_MAX_PRICE, PREOPEN_DOWN_FAK_MAX_PRICE,
     PREOPEN_MIN_ARB_EDGE, PREOPEN_MAX_ACTIONS_PER_EVENT,
 )
 
 from .preopen_event_pool import PreopenEvent, PreopenEventPool, EventState
 from .preopen_arb import check_arb_from_orderbook, evaluate_arb_edge
+from .preopen_pairing import PairingPhase, build_paired_legs
+from .preopen_budget import check_budget, estimate_event_budget_usdc
 
 
 class ActionResult(Enum):
@@ -314,6 +319,60 @@ def execute_event_cycle(
             error=f"action_count={event.action_count} >= max={PREOPEN_MAX_ACTIONS_PER_EVENT}",
         )]
 
+    # ── Event-level budget guard (preflight) ─────────────────────────────────
+    # Cooldown: if previously blocked by insufficient funds, avoid log spam.
+    now_ts = time.time()
+    if event.skip_until_ts is not None and now_ts < float(event.skip_until_ts):
+        return [ExecutorAction(
+            action="budget_guard",
+            result=ActionResult.SKIPPED,
+            order_id=None,
+            price=None,
+            shares=None,
+            error=f"cooldown_until={float(event.skip_until_ts):.0f} reason={event.skip_reason or 'insufficient_balance_usdc'}",
+        )]
+
+    # Conservative estimate: include all legs we might place for this event.
+    portfolio = get_portfolio() if not dry_run else {"balance_usdc": 1e18}
+    balance_usdc = None
+    if isinstance(portfolio, dict) and not portfolio.get("error"):
+        balance_usdc = portfolio.get("balance_usdc")
+
+    yes_shares = float(PREOPEN_YES_SHARES_X)
+    down_entry_shares = float(PREOPEN_YES_SHARES_X)  # paired with UP entry: same shares
+    down_resting_shares = float(PREOPEN_YES_SHARES_X) * float(PREOPEN_HEDGE_RATIO)
+    up_resting_shares = float(PREOPEN_YES_SHARES_X) * float(PREOPEN_HEDGE_RATIO)
+
+    required_usdc = estimate_event_budget_usdc(
+        yes_shares=yes_shares,
+        yes_price_cap=float(PREOPEN_YES_MAX_PRICE),
+        down_entry_shares=down_entry_shares,
+        down_entry_price_cap=float(PREOPEN_DOWN_ENTRY_MAX_PRICE),
+        down_resting_shares=down_resting_shares,
+        down_resting_price=float(PREOPEN_DOWN_RESTING_PRICE),
+        up_resting_shares=up_resting_shares,
+        up_resting_price=float(PREOPEN_YES_MAX_PRICE),
+        buffer_usdc=0.0,
+    )
+
+    check = check_budget(
+        available_usdc=balance_usdc,
+        required_usdc=required_usdc,
+        min_free_usdc=0.0,
+    )
+    if not check.ok:
+        event.skip_until_ts = now_ts + 120.0
+        event.skip_reason = check.reason
+        pool.add(event)
+        return [ExecutorAction(
+            action="budget_guard",
+            result=ActionResult.SKIPPED,
+            order_id=None,
+            price=None,
+            shares=None,
+            error=f"{check.reason} | required={check.required_usdc:.2f} available={check.available_usdc:.2f} | cooldown=120s",
+        )]
+
     # ── Phase 0: DISCOVERED → READY (automatic transition) ─────────────────
     if event.state == EventState.DISCOVERED:
         event.transition_to(EventState.READY)
@@ -330,6 +389,85 @@ def execute_event_cycle(
             event.transition_to(EventState.YES_PLACED)
             pool.add(event)
 
+            # Paired leg: when UP entry is placed, also place DOWN entry (non-resting)
+            paired = build_paired_legs(
+                phase=PairingPhase.UP_ENTRY,
+                shares=yes_shares,
+                up_price_cap=float(PREOPEN_YES_MAX_PRICE),
+                down_price_cap=float(PREOPEN_DOWN_ENTRY_MAX_PRICE),
+                up_resting_price=float(PREOPEN_YES_MAX_PRICE),
+                down_resting_price=float(PREOPEN_DOWN_RESTING_PRICE),
+            )
+            for leg in paired:
+                # Market-like DOWN entry: use current best ask capped by down_price_cap
+                if leg.side != "no":
+                    continue
+                side_book = fetch_side_orderbook_price(event.clob_token_ids, "no")
+                best_ask = side_book.get("best_ask") if side_book else None
+                if best_ask is None:
+                    actions.append(ExecutorAction(
+                        action="paired_down_entry",
+                        result=ActionResult.ERROR,
+                        order_id=None,
+                        price=None,
+                        shares=leg.shares,
+                        error="cannot_fetch_no_ask",
+                    ))
+                    continue
+                if float(best_ask) > float(leg.price_cap):
+                    actions.append(ExecutorAction(
+                        action="paired_down_entry",
+                        result=ActionResult.SKIPPED,
+                        order_id=None,
+                        price=float(best_ask),
+                        shares=leg.shares,
+                        error=f"no_ask={float(best_ask):.4f} > max_price={float(leg.price_cap):.4f}",
+                    ))
+                    continue
+
+                limit_price = min(float(best_ask), float(leg.price_cap))
+                if dry_run:
+                    actions.append(ExecutorAction(
+                        action="paired_down_entry",
+                        result=ActionResult.PLACED,
+                        order_id=f"DRY-{event.condition_id[:8]}-PAIR-NO",
+                        price=limit_price,
+                        shares=leg.shares,
+                        error=None,
+                    ))
+                else:
+                    result = direct_polymarket_trade(
+                        side="no",
+                        amount=float(leg.shares) * limit_price,
+                        price=limit_price,
+                        clob_token_ids=event.clob_token_ids,
+                        fee_rate_bps=event.fee_rate_bps,
+                        condition_id=event.condition_id,
+                        order_type_override="GTC",
+                        post_only=False,
+                    )
+                    if result.get("success"):
+                        fill_price = result.get("fill_price")
+                        if fill_price is None:
+                            fill_price = limit_price
+                        actions.append(ExecutorAction(
+                            action="paired_down_entry",
+                            result=ActionResult.PLACED,
+                            order_id=result.get("trade_id"),
+                            price=float(fill_price),
+                            shares=leg.shares,
+                            error=None,
+                        ))
+                    else:
+                        actions.append(ExecutorAction(
+                            action="paired_down_entry",
+                            result=ActionResult.ERROR,
+                            order_id=None,
+                            price=limit_price,
+                            shares=leg.shares,
+                            error=result.get("error", "unknown"),
+                        ))
+
     # ── Phase 2: Down resting order (only from YES_PLACED) ─────────────────
     if event.state == EventState.YES_PLACED:
         action = _place_down_resting_order(event, dry_run)
@@ -339,6 +477,60 @@ def execute_event_cycle(
             event.down_order_id = action.order_id
             event.transition_to(EventState.DOWN_RESTING)
             pool.add(event)
+
+            # Paired leg: when DOWN resting is placed, also place UP resting
+            paired = build_paired_legs(
+                phase=PairingPhase.DOWN_RESTING,
+                shares=float(PREOPEN_YES_SHARES_X) * float(PREOPEN_HEDGE_RATIO),
+                up_price_cap=float(PREOPEN_YES_MAX_PRICE),
+                down_price_cap=float(PREOPEN_DOWN_ENTRY_MAX_PRICE),
+                up_resting_price=float(PREOPEN_YES_MAX_PRICE),
+                down_resting_price=float(PREOPEN_DOWN_RESTING_PRICE),
+            )
+            for leg in paired:
+                if leg.side != "yes":
+                    continue
+                if dry_run:
+                    actions.append(ExecutorAction(
+                        action="paired_up_resting",
+                        result=ActionResult.PLACED,
+                        order_id=f"DRY-{event.condition_id[:8]}-PAIR-YES-REST",
+                        price=float(leg.price_cap),
+                        shares=leg.shares,
+                        error=None,
+                    ))
+                else:
+                    result = direct_polymarket_trade(
+                        side="yes",
+                        amount=float(leg.shares) * float(leg.price_cap),
+                        price=float(leg.price_cap),
+                        clob_token_ids=event.clob_token_ids,
+                        fee_rate_bps=event.fee_rate_bps,
+                        condition_id=event.condition_id,
+                        order_type_override=leg.order_type or "GTC",
+                        post_only=True,
+                    )
+                    if result.get("success"):
+                        fill_price = result.get("fill_price")
+                        if fill_price is None:
+                            fill_price = float(leg.price_cap)
+                        actions.append(ExecutorAction(
+                            action="paired_up_resting",
+                            result=ActionResult.PLACED,
+                            order_id=result.get("trade_id"),
+                            price=float(fill_price),
+                            shares=leg.shares,
+                            error=None,
+                        ))
+                    else:
+                        actions.append(ExecutorAction(
+                            action="paired_up_resting",
+                            result=ActionResult.ERROR,
+                            order_id=None,
+                            price=float(leg.price_cap),
+                            shares=leg.shares,
+                            error=result.get("error", "unknown"),
+                        ))
 
     # ── Phase 3: Switch to FAK near open ───────────────────────────────────
     tts = event.time_to_start(now)

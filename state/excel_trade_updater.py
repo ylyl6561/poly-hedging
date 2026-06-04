@@ -91,3 +91,43 @@ def update_trade_row(*, xlsx_path: str | Path, key_row: dict[str, Any], updates:
         wb.save(xlsx_path)
 
     return updated
+
+
+def upsert_event_rows(*, xlsx_path: str | Path, rows: list[dict[str, Any]], key_fields: list[str]) -> int:
+    ensure_openpyxl_available()
+
+    xlsx_path = Path(xlsx_path)
+    if not rows:
+        return 0
+    if not xlsx_path.exists():
+        return 0
+
+    wb = load_workbook(xlsx_path)
+    ws = wb.active
+    headers = [cell.value for cell in ws[1]]
+    header_to_col = {str(h): idx + 1 for idx, h in enumerate(headers) if h is not None}
+
+    def build_key(data: dict[str, Any]) -> tuple[str, ...]:
+        return tuple(str(data.get(field) or "") for field in key_fields)
+
+    updated_count = 0
+    existing_rows: dict[tuple[str, ...], int] = {}
+    for r in range(2, ws.max_row + 1):
+        existing = {h: ws.cell(row=r, column=col).value for h, col in header_to_col.items()}
+        existing_rows[build_key(existing)] = r
+
+    for row in rows:
+        key = build_key(row)
+        if key in existing_rows:
+            target_row = existing_rows[key]
+            for col_name, val in row.items():
+                if col_name in header_to_col:
+                    ws.cell(row=target_row, column=header_to_col[col_name]).value = val
+            updated_count += 1
+        else:
+            ws.append([row.get(str(h)) for h in headers])
+            updated_count += 1
+
+    if updated_count:
+        wb.save(xlsx_path)
+    return updated_count

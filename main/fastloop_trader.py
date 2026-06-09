@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 _project_root = Path(__file__).parent.parent.resolve()
@@ -83,7 +83,17 @@ def setup_run_logging(is_live: bool):
 
 def _pick_events(limit: int):
     markets = discover_fast_market_markets(asset="BTC", window="5m", use_simmer=True)
-    return markets[:limit]
+    now = datetime.now(timezone.utc)
+    upcoming_markets = []
+    for market in markets:
+        start_time, end_time = _build_event_times(market)
+        if not start_time or not end_time:
+            continue
+        if start_time <= now:
+            continue
+        upcoming_markets.append((start_time, market))
+    upcoming_markets.sort(key=lambda item: item[0])
+    return [market for _, market in upcoming_markets[:limit]]
 
 
 def _build_event_times(market: dict):
@@ -148,6 +158,20 @@ def main():
             start_time, end_time = _build_event_times(market)
             if not start_time or not end_time:
                 continue
+            if datetime.now(timezone.utc) >= start_time:
+                print(f"【跳过】{event_name}：当前事件已开始，等待下一个未开始事件")
+                structured_log.record_event(
+                    event_name=event_name,
+                    event_id=condition_id,
+                    phase="skipped_started",
+                    payload={
+                        "market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")},
+                        "start_time": start_time.isoformat(),
+                        "end_time": end_time.isoformat(),
+                        "reason": "event_already_started",
+                    },
+                )
+                continue
 
             print(f"【事件】{event_name}")
             structured_log.record_event(event_name=event_name, event_id=condition_id, phase="start", payload={"market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")}, "start_time": start_time.isoformat(), "end_time": end_time.isoformat()})
@@ -160,8 +184,8 @@ def main():
                 fee_rate_bps=int(market.get("fee_rate_bps") or 0),
                 condition_id=condition_id,
                 amount_usd=float(cfg.get("dual_wallet_entry_amount_usd", 10.0)),
-                up_price=0.5,
-                down_price=0.5,
+                up_price=float(cfg.get("dual_wallet_entry_up_price", 0.5)),
+                down_price=float(cfg.get("dual_wallet_entry_down_price", 0.5)),
             )
             structured_log.record_result(summary)
             structured_log.record_event_state(event_name=event_name, event_id=condition_id, flow_state="finished", wallet_status={wallet_id: f"{pnl:.4f}" for wallet_id, pnl in summary.wallet_pnl_usd.items()}, note=f"profit={summary.is_profit}")

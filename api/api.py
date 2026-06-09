@@ -12,15 +12,25 @@ import os
 import sys
 import json
 import time
+import io
+from contextlib import redirect_stderr
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 
+from accounts import AccountContext, get_account_registry
 from core.constants import CLOB_API, TRADE_SOURCE, SKILL_SLUG
 from core import (
     DIRECT_CLOB_HOST, DIRECT_CLOB_CHAIN_ID, DIRECT_CLOB_SIGNATURE_TYPE,
     DIRECT_CLOB_FUNDER, WALLET_LINK_RETRIES, WALLET_LINK_RETRY_DELAY,
     ORDER_TYPE,
+)
+from .clob_client_manager import get_clob_client_manager
+from .stderr_utils import (
+    call_with_optional_stderr_suppression,
+    direct_clob_debug,
+    is_direct_clob_debug_enabled,
+    should_suppress_known_direct_clob_stderr_line,
 )
 
 
@@ -29,17 +39,31 @@ from core import (
 # =============================================================================
 
 _client = None
-_direct_clob_client = None
+
+def _should_suppress_direct_clob_stderr() -> bool:
+    flag = os.environ.get("DIRECT_CLOB_SUPPRESS_STDERR", "")
+    return flag.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def reset_direct_clob_client():
-    """Reset the cached ClobClient to force a fresh instance on next use.
+def _redact_secret(value: str | None, *, left: int = 6, right: int = 4) -> str | None:
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) <= left + right:
+        return "*" * len(text)
+    return f"{text[:left]}...{text[-right:]}"
 
-    Use this only after auth or version mismatch errors. Recreating the client
-    before every trade adds latency and repeatedly hits /auth/api-key.
-    """
-    global _direct_clob_client
-    _direct_clob_client = None
+def _resolve_direct_clob_funder(account: AccountContext) -> str | None:
+    return account.funder_address or DIRECT_CLOB_FUNDER
+
+
+def reset_direct_clob_client(*, account: AccountContext | None = None):
+    """Reset the cached ClobClient for one account or all accounts."""
+    manager = get_clob_client_manager()
+    if account is None:
+        manager.reset_all()
+        return
+    manager.reset_client(account)
 
 
 def api_request(url, method="GET", data=None, headers=None, timeout=15):
@@ -419,11 +443,12 @@ def get_client(live=True):
 
 def should_use_direct_live_clob(dry_run):
     from core.config import EXECUTION_ROUTE
+    registry = get_account_registry()
     return (
         not dry_run
         and EXECUTION_ROUTE == "direct_clob"
         and os.environ.get("TRADING_VENUE", "polymarket") == "polymarket"
-        and bool(get_wallet_private_key())
+        and bool(registry.list_accounts())
     )
 
 
@@ -432,32 +457,26 @@ def get_execution_route():
     return EXECUTION_ROUTE
 
 
-def get_wallet_private_key(env_var_name: str | None = None):
-    key_name = env_var_name or "WALLET_PRIVATE_KEY"
-    return os.environ.get(key_name)
-
-
-def get_wallet_address(env_var_name: str | None = None):
-    private_key = get_wallet_private_key(env_var_name)
-    if not private_key:
-        return None
-    try:
-        from eth_account import Account
-        return Account.from_key(private_key).address
-    except Exception:
-        return None
-
-
 def _extract_usdc_balance(payload):
     if payload is None:
         return None
-    if isinstance(payload, (int, float)):
-        return float(payload)
-    if isinstance(payload, str):
+
+    def _normalize_balance_value(value, *, key: str | None = None, asset_hint: str | None = None):
         try:
-            return float(payload)
+            numeric = float(value)
         except (TypeError, ValueError):
             return None
+        normalized_key = (key or "").lower()
+        normalized_asset = str(asset_hint or "").lower()
+        if normalized_key in {"balance", "balance_usdc", "available", "available_usdc", "usdc", "usdc_balance", "amount", "free", "freecollateral", "free_collateral", "buyingpower", "buying_power"}:
+            if normalized_asset in {"pusd", "usdc", "usdc.e", "collateral"} or numeric >= 1_000_000:
+                return numeric / 1_000_000.0
+        return numeric
+
+    if isinstance(payload, (int, float)):
+        return _normalize_balance_value(payload)
+    if isinstance(payload, str):
+        return _normalize_balance_value(payload)
     if isinstance(payload, list):
         for item in payload:
             parsed = _extract_usdc_balance(item)
@@ -467,6 +486,7 @@ def _extract_usdc_balance(payload):
     if not isinstance(payload, dict):
         return None
 
+    asset_hint = payload.get("asset") or payload.get("currency") or payload.get("symbol")
     candidate_keys = (
         "balance_usdc", "balance", "available", "available_usdc", "usdc", "usdc_balance",
         "amount", "free", "freeCollateral", "free_collateral", "buyingPower", "buying_power",
@@ -474,11 +494,9 @@ def _extract_usdc_balance(payload):
     )
     for key in candidate_keys:
         value = payload.get(key)
-        try:
-            if value is not None:
-                return float(value)
-        except (TypeError, ValueError):
-            continue
+        parsed = _normalize_balance_value(value, key=key, asset_hint=asset_hint)
+        if parsed is not None:
+            return parsed
 
     for nested_key in ("balance", "allowance", "data"):
         nested = payload.get(nested_key)
@@ -488,135 +506,271 @@ def _extract_usdc_balance(payload):
     return None
 
 
-def get_wallet_usdc_balance(*, env_var_name: str | None = None) -> dict:
-    private_key = get_wallet_private_key(env_var_name)
-    if not private_key:
-        return {"success": False, "error": f"missing_private_key:{env_var_name or 'WALLET_PRIVATE_KEY'}"}
-
-    wallet_address = get_wallet_address(env_var_name)
-    if not wallet_address:
-        return {"success": False, "error": "wallet_address_unavailable"}
+def _build_collateral_balance_params(signature_type: int):
+    try:
+        from py_clob_client_v2 import BalanceAllowanceParams, AssetType
+    except ImportError:
+        try:
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+        except ImportError:
+            return None
 
     try:
-        client = get_direct_clob_client(private_key=private_key)
-    except Exception as exc:
-        return {"success": False, "error": f"clob_client_init_failed:{exc}", "wallet_address": wallet_address}
-
-    try:
-        payload = client.get_balance_allowance()
+        return BalanceAllowanceParams(
+            asset_type=AssetType.COLLATERAL,
+            signature_type=signature_type,
+        )
     except TypeError:
         try:
-            payload = client.get_balance_allowance(params={})
-        except Exception as exc:
-            payload = {"error": str(exc)}
-    except Exception as exc:
-        payload = {"error": str(exc)}
+            return BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+        except TypeError:
+            try:
+                return {"asset_type": getattr(AssetType.COLLATERAL, "value", AssetType.COLLATERAL), "signature_type": signature_type}
+            except Exception:
+                return {"asset_type": "COLLATERAL", "signature_type": signature_type}
 
+def _call_client_method_variants(client, method_name: str, attempts: list[tuple[tuple, dict]]) -> tuple[object | None, str | None]:
+    method = getattr(client, method_name, None)
+    if method is None:
+        return None, f"method_missing:{method_name}"
+
+    last_error = None
+    for args, kwargs in attempts:
+        try:
+            return call_with_optional_stderr_suppression(method, *args, **kwargs), None
+        except TypeError as exc:
+            last_error = exc
+            continue
+        except Exception as exc:
+            last_error = exc
+            continue
+    return None, str(last_error) if last_error else f"{method_name}_unavailable"
+
+
+def _fetch_balance_allowance_payload(client, *, signature_type: int):
+    params = _build_collateral_balance_params(signature_type)
+    attempts = []
+    if params is not None:
+        attempts.append(((), {"params": params}))
+        attempts.append(((params,), {}))
+        if isinstance(params, dict):
+            attempts.append(((), params))
+    attempts.extend([
+        ((), {"params": {"asset_type": "COLLATERAL", "signature_type": signature_type}}),
+        (({"asset_type": "COLLATERAL", "signature_type": signature_type},), {}),
+        ((), {"params": {"asset_type": "COLLATERAL"}}),
+        (({"asset_type": "COLLATERAL"},), {}),
+        ((), {}),
+        ((), {"params": {}}),
+    ])
+
+    payload, error = _call_client_method_variants(client, "get_balance_allowance", attempts)
+    if error is not None:
+        return {"error": error or "balance_allowance_unavailable"}
+    return payload
+
+
+def _fetch_balance_probe_payloads(client, *, signature_type: int) -> dict[str, dict[str, object]]:
+    params = _build_collateral_balance_params(signature_type)
+    probe_specs: list[tuple[str, str, list[tuple[tuple, dict] | None]]] = [
+        (
+            "get_balance_allowance",
+            "sdk_get_balance_allowance",
+            [
+                ((), {"params": params}) if params is not None else None,
+                ((params,), {}) if params is not None else None,
+                ((), params) if isinstance(params, dict) else None,
+                ((), {"params": {"asset_type": "COLLATERAL", "signature_type": signature_type}}),
+                (({"asset_type": "COLLATERAL", "signature_type": signature_type},), {}),
+                ((), {"params": {"asset_type": "COLLATERAL"}}),
+                (({"asset_type": "COLLATERAL"},), {}),
+                ((), {}),
+            ],
+        ),
+        (
+            "get_balance",
+            "sdk_get_balance",
+            [
+                ((), {"params": params}) if params is not None else None,
+                ((params,), {}) if params is not None else None,
+                ((), params) if isinstance(params, dict) else None,
+                ((), {"params": {"asset_type": "COLLATERAL", "signature_type": signature_type}}),
+                (({"asset_type": "COLLATERAL", "signature_type": signature_type},), {}),
+                ((), {"params": {"asset_type": "COLLATERAL"}}),
+                (({"asset_type": "COLLATERAL"},), {}),
+                ((), {}),
+            ],
+        ),
+        (
+            "get_collateral",
+            "sdk_get_collateral",
+            [
+                ((), {}),
+                ((), {"params": params}) if params is not None else None,
+                ((params,), {}) if params is not None else None,
+            ],
+        ),
+        (
+            "get_usdc_balance",
+            "sdk_get_usdc_balance",
+            [
+                ((), {}),
+                ((), {"params": params}) if params is not None else None,
+                ((params,), {}) if params is not None else None,
+            ],
+        ),
+    ]
+
+    payloads: dict[str, dict[str, object]] = {}
+    for method_name, label, raw_attempts in probe_specs:
+        attempts = [attempt for attempt in raw_attempts if attempt is not None]
+        payload, error = _call_client_method_variants(client, method_name, attempts)
+        payloads[label] = {
+            "payload": payload,
+            "error": error,
+            "parsed_balance_usdc": _extract_usdc_balance(payload) if error is None else None,
+            "payload_type": type(payload).__name__ if error is None and payload is not None else None,
+        }
+    return payloads
+
+
+def get_wallet_usdc_balance(*, account: AccountContext) -> dict:
+    wallet_address = account.wallet_address
+
+    def _emit_balance_debug(event: str, **fields) -> None:
+        preview = fields.pop("raw_preview", None)
+        if preview is None and "raw" in fields:
+            try:
+                raw_text = json.dumps(fields["raw"], ensure_ascii=False, default=str)
+            except Exception:
+                raw_text = repr(fields["raw"])
+            preview = raw_text[:1200]
+            fields.pop("raw", None)
+        direct_clob_debug(
+            event,
+            account_id=account.account_id,
+            label=account.label,
+            wallet_address=wallet_address,
+            **fields,
+            raw_preview=preview,
+        )
+
+    try:
+        client = get_direct_clob_client(account=account)
+    except Exception as exc:
+        _emit_balance_debug("wallet_balance_client_init_failed", error=repr(exc))
+        return {
+            "success": False,
+            "error": f"clob_client_init_failed:{exc}",
+            "wallet_address": wallet_address,
+            "account_id": account.account_id,
+        }
+
+    payload = _fetch_balance_allowance_payload(client, signature_type=account.signature_type)
     parsed = _extract_usdc_balance(payload)
+    _emit_balance_debug(
+        "wallet_balance_balance_allowance_result",
+        parsed_balance_usdc=parsed,
+        payload_type=type(payload).__name__,
+        raw=payload,
+    )
+    if parsed is not None and parsed > 0:
+        return {
+            "success": True,
+            "wallet_address": wallet_address,
+            "balance_usdc": parsed,
+            "raw": payload,
+            "account_id": account.account_id,
+            "label": account.label,
+        }
+
+    probe_payloads = _fetch_balance_probe_payloads(client, signature_type=account.signature_type)
+    for probe_label, probe_result in probe_payloads.items():
+        _emit_balance_debug(
+            "wallet_balance_sdk_probe_result",
+            probe=probe_label,
+            error=probe_result.get("error"),
+            parsed_balance_usdc=probe_result.get("parsed_balance_usdc"),
+            payload_type=probe_result.get("payload_type"),
+            raw=probe_result.get("payload"),
+        )
+
+    positive_probe = next(
+        (
+            probe_result
+            for probe_result in probe_payloads.values()
+            if probe_result.get("error") is None
+            and probe_result.get("parsed_balance_usdc") is not None
+            and float(probe_result.get("parsed_balance_usdc") or 0) > 0
+        ),
+        None,
+    )
+    if positive_probe is not None:
+        return {
+            "success": True,
+            "wallet_address": wallet_address,
+            "balance_usdc": float(positive_probe["parsed_balance_usdc"]),
+            "raw": positive_probe.get("payload"),
+            "account_id": account.account_id,
+            "label": account.label,
+        }
+
     if parsed is not None:
-        return {"success": True, "wallet_address": wallet_address, "balance_usdc": parsed, "raw": payload}
+        return {
+            "success": True,
+            "wallet_address": wallet_address,
+            "balance_usdc": parsed,
+            "raw": payload,
+            "account_id": account.account_id,
+            "label": account.label,
+        }
 
     value_payload = api_request(f"https://data-api.polymarket.com/value?user={quote(str(wallet_address))}", timeout=10)
     parsed = _extract_usdc_balance(value_payload)
+    _emit_balance_debug(
+        "wallet_balance_value_api_result",
+        parsed_balance_usdc=parsed,
+        payload_type=type(value_payload).__name__,
+        raw=value_payload,
+    )
     if parsed is not None:
-        return {"success": True, "wallet_address": wallet_address, "balance_usdc": parsed, "raw": value_payload}
+        return {
+            "success": True,
+            "wallet_address": wallet_address,
+            "balance_usdc": parsed,
+            "raw": value_payload,
+            "account_id": account.account_id,
+            "label": account.label,
+        }
 
-    return {"success": False, "wallet_address": wallet_address, "error": "balance_unavailable"}
-
-
-def get_wallet_address(env_var_name: str | None = None):
-    private_key = get_wallet_private_key(env_var_name)
-    if not private_key:
-        return None
-    try:
-        from eth_account import Account
-        return Account.from_key(private_key).address
-    except Exception:
-        return None
-
-
-def get_wallet_usdc_balance(*, env_var_name: str | None = None) -> dict:
-    private_key = get_wallet_private_key(env_var_name)
-    if not private_key:
-        return {"success": False, "error": f"missing_private_key:{env_var_name or 'WALLET_PRIVATE_KEY'}"}
-
-    wallet_address = get_wallet_address(env_var_name)
-    if not wallet_address:
-        return {"success": False, "error": "wallet_address_unavailable"}
-
-    try:
-        client = get_direct_clob_client(private_key=private_key)
-    except Exception as exc:
-        return {"success": False, "error": f"clob_client_init_failed:{exc}", "wallet_address": wallet_address}
-
-    balance_candidates = []
-    try:
-        balance_candidates.append(client.get_balance_allowance())
-    except TypeError:
-        try:
-            balance_candidates.append(client.get_balance_allowance(params={}))
-        except Exception as exc:
-            balance_candidates.append({"error": str(exc)})
-    except Exception as exc:
-        balance_candidates.append({"error": str(exc)})
-
-    for payload in balance_candidates:
-        parsed = _extract_usdc_balance(payload)
-        if parsed is not None:
-            return {"success": True, "wallet_address": wallet_address, "balance_usdc": parsed, "raw": payload}
-
-    value_payload = api_request(f"https://data-api.polymarket.com/value?user={quote(str(wallet_address))}", timeout=10)
-    parsed_value = _extract_usdc_balance(value_payload)
-    if parsed_value is not None:
-        return {"success": True, "wallet_address": wallet_address, "balance_usdc": parsed_value, "raw": value_payload}
-
-    positions_payload = api_request(f"https://data-api.polymarket.com/positions?user={quote(str(wallet_address))}", timeout=10)
-    parsed_positions = _extract_usdc_balance(positions_payload)
-    if parsed_positions is not None:
-        return {"success": True, "wallet_address": wallet_address, "balance_usdc": parsed_positions, "raw": positions_payload}
-
-    return {"success": False, "wallet_address": wallet_address, "error": "balance_unavailable"}
+    _emit_balance_debug("wallet_balance_unavailable")
+    return {
+        "success": False,
+        "wallet_address": wallet_address,
+        "account_id": account.account_id,
+        "label": account.label,
+        "error": "balance_unavailable",
+    }
 
 
 # =============================================================================
 # Direct Polymarket CLOB Client
 # =============================================================================
 
-def get_direct_clob_client(*, private_key: str | None = None):
-    """Create an authenticated Polymarket CLOB V2 client without Simmer wallet linking."""
-    global _direct_clob_client
-    if private_key is None and _direct_clob_client is not None:
-        return _direct_clob_client
-
-    private_key = private_key or get_wallet_private_key()
-    if not private_key:
-        raise RuntimeError("WALLET_PRIVATE_KEY is required for direct Polymarket CLOB live trading")
-
-    try:
-        from py_clob_client_v2 import ClobClient
-    except ImportError as e:
-        raise RuntimeError("py-clob-client-v2 is required for direct Polymarket CLOB trading") from e
-
-    funder = DIRECT_CLOB_FUNDER
-    if not funder:
-        try:
-            from eth_account import Account
-            funder = Account.from_key(private_key).address
-        except Exception:
-            funder = None
-
-    client = ClobClient(
-        DIRECT_CLOB_HOST,
-        key=private_key,
-        chain_id=DIRECT_CLOB_CHAIN_ID,
-        signature_type=DIRECT_CLOB_SIGNATURE_TYPE,
-        funder=funder,
+def get_direct_clob_client(*, account: AccountContext):
+    """Create or reuse an authenticated Polymarket CLOB V2 client for one account."""
+    direct_clob_debug(
+        "create_client_attempt",
+        account_id=account.account_id,
+        wallet_address=account.wallet_address,
+        funder=account.funder_address,
+        proxy_address=account.proxy_address,
+        funder_env=account.funder_env,
+        host=account.host,
+        chain_id=account.chain_id,
+        signature_type=account.signature_type,
     )
-    creds = client.create_or_derive_api_key()
-    client.set_api_creds(creds)
-    if private_key == get_wallet_private_key():
-        _direct_clob_client = client
-    return client
+    return get_clob_client_manager().get_client(account)
 
 
 def _get_order_type_enum(override=None):
@@ -731,7 +885,7 @@ def _extract_fill_price(result):
 
 
 def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0, condition_id=None, market_id=None,
-                            order_type_override=None, post_only=False, mock=False):
+                            order_type_override=None, post_only=False, mock=False, account: AccountContext | None = None):
     """Place a BUY order directly on Polymarket CLOB V2 using the side token id.
 
     Follows Polymarket's current py-clob-client-v2 flow:
@@ -755,6 +909,8 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
     if not clob_token_ids or len(clob_token_ids) < 2:
         return {"success": False, "error": "missing_clob_token_ids"}
     token_id = clob_token_ids[0] if side.lower() == "yes" else clob_token_ids[1]
+    if account is None:
+        raise ValueError("direct_polymarket_trade requires account")
     if not token_id:
         return {"success": False, "error": f"missing_{side.lower()}_token_id"}
     if price <= 0 or price >= 1:
@@ -1024,12 +1180,12 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         if retry_count > 0:
             time.sleep(0.5 * retry_count)
 
-        client = get_direct_clob_client()
+        client = get_direct_clob_client(account=account)
         try:
             result = _create_and_post_order(client, token_id, order_type, options, order_price)
         except Exception as e:
             if retry_count < MAX_RETRIES and _is_version_mismatch_error(e):
-                reset_direct_clob_client()
+                reset_direct_clob_client(account=account)
                 return _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=retry_count + 1)
             if _is_no_liquidity_error(e):
                 return _clean_no_liquidity_response(_order_type_name(order_type), detail=e)
@@ -1039,7 +1195,7 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
             return {"error": "market_closed_or_resolved", "result": result}
 
         if retry_count < MAX_RETRIES and _is_version_mismatch_error(result):
-            reset_direct_clob_client()
+            reset_direct_clob_client(account=account)
             return _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=retry_count + 1)
 
         return result
@@ -1052,7 +1208,7 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         order_type = _get_order_type_enum(order_type_override)
         order_type_name = _order_type_name(order_type)
 
-        client = get_direct_clob_client()
+        client = get_direct_clob_client(account=account)
         market_context, status_error = _resolve_market_context(client, token_id, condition_id=condition_id)
         if not market_context:
             return {
@@ -1086,9 +1242,9 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         err_str = str(e)
         if "order_version_mismatch" in err_str or "version_mismatch" in err_str:
             # Force fresh client on retry
-            reset_direct_clob_client()
+            reset_direct_clob_client(account=account)
             try:
-                client = get_direct_clob_client()
+                client = get_direct_clob_client(account=account)
                 market_context, status_error = _resolve_market_context(client, token_id, condition_id=condition_id)
                 if not market_context:
                     return {"success": False, "error": status_error, "direct_clob": True}
@@ -1106,7 +1262,7 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
             except Exception as retry_e:
                 return {"success": False, "error": f"direct_clob_retry_failed: {retry_e}", "direct_clob": True}
         if _is_auth_error(e):
-            reset_direct_clob_client()
+            reset_direct_clob_client(account=account)
             return {"success": False, "error": f"direct_clob_auth_failed: {e}", "direct_clob": True}
         if _is_no_liquidity_error(e):
             return _clean_no_liquidity_response(_order_type_name(order_type) if order_type else "FAK", detail=e)
@@ -1196,7 +1352,7 @@ def ensure_wallet_linked_with_retry():
 # Order Management
 # =============================================================================
 
-def cancel_order(order_id: str, mock: bool = False) -> dict:
+def cancel_order(order_id: str, *, account: AccountContext, mock: bool = False) -> dict:
     """Cancel an existing CLOB order by order_id. Returns success dict."""
     if not order_id:
         return {"success": False, "error": "missing_order_id"}
@@ -1209,7 +1365,7 @@ def cancel_order(order_id: str, mock: bool = False) -> dict:
         return {"success": True, "order_id": order_id, "cancelled": True, "simulated": True}
 
     try:
-        client = get_direct_clob_client()
+        client = get_direct_clob_client(account=account)
         result = client.cancel_order(order_id)
         if result is True or (isinstance(result, dict) and result.get("success") is not False):
             return {"success": True, "order_id": order_id, "cancelled": True}
@@ -1220,3 +1376,49 @@ def cancel_order(order_id: str, mock: bool = False) -> dict:
             # Already filled or cancelled — treat as success
             return {"success": True, "order_id": order_id, "cancelled": True, "note": "not_found_treated_as_cancelled"}
         return {"success": False, "error": f"cancel_order_error: {e}"}
+
+
+def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = False) -> dict:
+    """Fetch current CLOB order status with best-effort normalization."""
+    if not order_id:
+        return {"success": False, "error": "missing_order_id"}
+
+    if mock or order_id.startswith("DRY-"):
+        return {"success": True, "order_id": order_id, "status": "submitted", "simulated": True}
+
+    try:
+        client = get_direct_clob_client(account=account)
+        result = client.get_order(order_id)
+        if not isinstance(result, dict):
+            return {"success": False, "order_id": order_id, "error": f"unexpected_order_status_response:{result}"}
+
+        status = str(result.get("status") or result.get("order_status") or "").lower()
+        normalized_status = {
+            "live": "submitted",
+            "open": "submitted",
+            "pending": "submitted",
+            "matched": "filled",
+            "filled": "filled",
+            "executed": "filled",
+            "cancelled": "cancelled",
+            "canceled": "cancelled",
+            "failed": "failed",
+            "rejected": "failed",
+        }.get(status, status or "submitted")
+
+        size_matched = result.get("size_matched") or result.get("filled_size") or result.get("matched_size")
+        created_price = result.get("price")
+        return {
+            "success": True,
+            "order_id": order_id,
+            "status": normalized_status,
+            "raw_status": status,
+            "price": created_price,
+            "shares": size_matched,
+            "raw": result,
+        }
+    except Exception as e:
+        err_str = str(e).lower()
+        if "order not found" in err_str or "not found" in err_str:
+            return {"success": True, "order_id": order_id, "status": "cancelled", "note": "not_found_treated_as_cancelled"}
+        return {"success": False, "order_id": order_id, "error": f"fetch_order_status_error: {e}"}

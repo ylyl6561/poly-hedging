@@ -77,18 +77,21 @@ class StructuredRunLog:
         flow_state: str,
         wallet_status: dict[str, Any] | None = None,
         note: str | None = None,
+        payload: dict[str, Any] | None = None,
     ):
-        payload = {
+        event_payload = {
             "flow_state": flow_state,
             "wallet_status": wallet_status or {},
         }
         if note is not None:
-            payload["note"] = note
+            event_payload["note"] = note
+        if payload:
+            event_payload.update(payload)
         self.record_event(
             event_name=event_name,
             event_id=event_id,
             phase="state",
-            payload=payload,
+            payload=event_payload,
         )
 
     def record_markets(self, markets: list[dict[str, Any]]):

@@ -1,1 +1,1 @@
-# main package — preopen modules
+# main package

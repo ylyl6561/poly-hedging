@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from api import direct_polymarket_trade, cancel_order, fetch_side_orderbook_price
+from api import direct_polymarket_trade, cancel_order, fetch_order_status, fetch_side_orderbook_price
 
 from .dual_wallet_models import WalletIdentity, OrderSide, OperationType, OrderSnapshot
 
@@ -20,6 +20,8 @@ from .dual_wallet_models import WalletIdentity, OrderSide, OperationType, OrderS
 class ExecutionOutcome:
     success: bool
     order_id: str | None = None
+    token_id: str | None = None
+    condition_id: str | None = None
     price: float | None = None
     shares: float | None = None
     error: str | None = None
@@ -54,13 +56,14 @@ class DualWalletExecutor:
             order_type_override=order_type_override,
             post_only=post_only,
             mock=self.dry_run,
+            account=wallet.account,
         )
         return self._normalize_result(result, fallback_price=price, mock=self.dry_run, wallet=wallet, side=side, condition_id=condition_id, event_name=event_name, amount_usd=amount_usd)
 
-    def cancel(self, order_id: str | None) -> ExecutionOutcome:
+    def cancel(self, order_id: str | None, *, wallet: WalletIdentity | None = None) -> ExecutionOutcome:
         if not order_id:
             return ExecutionOutcome(success=False, error="missing_order_id")
-        result = cancel_order(order_id, mock=self.dry_run)
+        result = cancel_order(order_id, mock=self.dry_run, account=wallet.account if wallet else None)
         if isinstance(result, dict) and result.get("success"):
             return ExecutionOutcome(success=True, order_id=order_id, raw=result)
         return ExecutionOutcome(success=False, order_id=order_id, error=(result or {}).get("error") if isinstance(result, dict) else str(result), raw=result if isinstance(result, dict) else None)
@@ -70,6 +73,20 @@ class DualWalletExecutor:
         if not data:
             return None
         return data.get("best_ask")
+
+    def fetch_order_status(self, order_id: str | None, *, wallet: WalletIdentity | None = None) -> ExecutionOutcome:
+        if not order_id:
+            return ExecutionOutcome(success=False, error="missing_order_id")
+        result = fetch_order_status(order_id, mock=self.dry_run, account=wallet.account if wallet else None)
+        if isinstance(result, dict) and result.get("success"):
+            return ExecutionOutcome(
+                success=True,
+                order_id=order_id,
+                price=result.get("price"),
+                shares=result.get("shares"),
+                raw=result,
+            )
+        return ExecutionOutcome(success=False, order_id=order_id, error=(result or {}).get("error") if isinstance(result, dict) else str(result), raw=result if isinstance(result, dict) else None)
 
     def _normalize_result(self, result: dict[str, Any] | Any, *, fallback_price: float | None, mock: bool = False, wallet: WalletIdentity | None = None, side: OrderSide | None = None, condition_id: str | None = None, event_name: str | None = None, amount_usd: float | None = None) -> ExecutionOutcome:
         if not isinstance(result, dict):
@@ -82,6 +99,8 @@ class DualWalletExecutor:
             return ExecutionOutcome(
                 success=True,
                 order_id=result.get("trade_id") or result.get("order_id") or (f"MOCK-{wallet.wallet_id}-{side.value}-{(condition_id or '')[:8]}" if mock and wallet and side else None),
+                token_id=(result.get("token_id") or result.get("asset_id") or result.get("market_asset_id") or (result.get("raw", {}) if isinstance(result.get("raw"), dict) else {}).get("token_id")),
+                condition_id=condition_id,
                 price=fill_price,
                 shares=shares if shares is not None else ((amount_usd / fill_price) if mock and amount_usd and fill_price else None),
                 raw=result,
@@ -106,8 +125,10 @@ def build_order_snapshot(
         amount_usd=amount_usd,
         operation=operation,
         order_id=outcome.order_id,
+        token_id=outcome.token_id,
+        condition_id=outcome.condition_id,
         price=outcome.price,
         shares=outcome.shares,
-        status="filled" if outcome.success else "failed",
+        status=OrderStatus.SUBMITTED.value if outcome.success and operation == OperationType.PLACE else (OrderStatus.FILLED.value if outcome.success else OrderStatus.FAILED.value),
         close_price=close_price,
     )

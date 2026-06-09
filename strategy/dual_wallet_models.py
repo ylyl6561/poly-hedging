@@ -11,8 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from collections import deque
 import random
 from typing import Iterable
+
+from accounts import AccountContext
 
 
 class WalletRole(str, Enum):
@@ -50,12 +53,20 @@ class EventFlowState(str, Enum):
     STOPPED = "stopped"
 
 
+class OrderStatus(str, Enum):
+    SUBMITTED = "submitted"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+    CLOSED = "closed"
+
+
 @dataclass(frozen=True)
 class WalletIdentity:
     wallet_id: str
     wallet_name: str
-    private_key_env: str
     role: WalletRole
+    account: AccountContext
 
 
 @dataclass
@@ -67,6 +78,8 @@ class OrderSnapshot:
     operation: OperationType
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     order_id: str | None = None
+    token_id: str | None = None
+    condition_id: str | None = None
     price: float | None = None
     shares: float | None = None
     status: str | None = None
@@ -83,12 +96,34 @@ class EventResultSummary:
     outcome: EventOutcome = EventOutcome.UNKNOWN
     total_pnl_usd: float = 0.0
     wallet_pnl_usd: dict[str, float] = field(default_factory=dict)
+    wallet_balance_usdc: dict[str, float | None] = field(default_factory=dict)
     order_count: int = 0
     filled_count: int = 0
     cancelled_count: int = 0
     force_closed_count: int = 0
     is_profit: bool = False
     settled_at: datetime | None = None
+
+
+@dataclass
+class LossWindowTracker:
+    recent_results: deque[bool] = field(default_factory=lambda: deque(maxlen=5))
+
+    def record(self, is_profit: bool) -> None:
+        self.recent_results.append(bool(is_profit))
+
+    def consecutive_losses(self) -> int:
+        count = 0
+        for is_profit in reversed(self.recent_results):
+            if is_profit:
+                break
+            count += 1
+        return count
+
+    def should_halt(self, max_consecutive_losses: int) -> bool:
+        if max_consecutive_losses <= 0:
+            return False
+        return self.consecutive_losses() >= max_consecutive_losses
 
 
 @dataclass
@@ -118,10 +153,10 @@ class DualWalletEventState:
         return self.wallet_orders.get(wallet_id)
 
     def count_filled(self) -> int:
-        return sum(1 for s in self.wallet_status.values() if s == "filled")
+        return sum(1 for s in self.wallet_status.values() if s == OrderStatus.FILLED.value)
 
     def active_wallet_ids(self) -> list[str]:
-        return [wallet_id for wallet_id, status in self.wallet_status.items() if status not in {"cancelled", "closed", "settled"}]
+        return [wallet_id for wallet_id, status in self.wallet_status.items() if status not in {OrderStatus.CANCELLED.value, OrderStatus.CLOSED.value, "settled"}]
 
     def is_within_force_close_window(self, now: datetime) -> bool:
         return (self.end_time - now).total_seconds() <= self.close_window_sec
@@ -136,31 +171,34 @@ class DualWalletEventState:
         return self.flow_state == EventFlowState.STOPPED or bool(self.halted_reason)
 
 
-def build_wallet_identities(*, wallet_a_private_key_env: str, wallet_b_private_key_env: str) -> list[WalletIdentity]:
+def build_wallet_identities(accounts: list[AccountContext]) -> list[WalletIdentity]:
+    if len(accounts) < 2:
+        raise ValueError("dual_wallet strategy requires at least two accounts")
+    selected = accounts[:2]
     return [
         WalletIdentity(
-            wallet_id="wallet_a",
-            wallet_name="钱包A",
-            private_key_env=wallet_a_private_key_env,
+            wallet_id=selected[0].account_id,
+            wallet_name=selected[0].label,
             role=WalletRole.A,
+            account=selected[0],
         ),
         WalletIdentity(
-            wallet_id="wallet_b",
-            wallet_name="钱包B",
-            private_key_env=wallet_b_private_key_env,
+            wallet_id=selected[1].account_id,
+            wallet_name=selected[1].label,
             role=WalletRole.B,
+            account=selected[1],
         ),
     ]
 
 
-def assign_event_sides(wallets: list[WalletIdentity]) -> dict[str, OrderSide]:
+def assign_event_sides(wallets: list[WalletIdentity]) -> tuple[dict[str, OrderSide], bool]:
     if len(wallets) != 2:
         raise ValueError("dual_wallet strategy requires exactly two wallets")
-    first_up = bool(random.getrandbits(1))
+    first_wallet_is_up = bool(random.getrandbits(1))
     return {
-        wallets[0].wallet_id: OrderSide.UP if first_up else OrderSide.DOWN,
-        wallets[1].wallet_id: OrderSide.DOWN if first_up else OrderSide.UP,
-    }
+        wallets[0].wallet_id: OrderSide.UP if first_wallet_is_up else OrderSide.DOWN,
+        wallets[1].wallet_id: OrderSide.DOWN if first_wallet_is_up else OrderSide.UP,
+    }, first_wallet_is_up
 
 
 def format_operation_timestamp(ts: datetime | None = None) -> str:

@@ -961,14 +961,25 @@ class DualWalletEventStrategy:
 
     def _wait_for_market_outcome(self, *, condition_id: str) -> dict[str, Any] | None:
         deadline = time.monotonic() + max(self.outcome_poll_timeout_sec, self.outcome_poll_interval_sec)
+        remaining = deadline - time.monotonic()
+        print(f"【等待结算】轮询市场结果，超时 {int(remaining)}s，间隔 {int(self.outcome_poll_interval_sec)}s")
         last_payload: dict[str, Any] | None = None
+        last_log_time = 0
         while True:
             payload = fetch_market_outcome(condition_id, slug=None, clob_token_ids=None)
             if isinstance(payload, dict):
                 last_payload = payload
-                if self._parse_event_outcome(payload) != EventOutcome.UNKNOWN:
+                outcome = self._parse_event_outcome(payload)
+                if outcome != EventOutcome.UNKNOWN:
+                    print(f"【结算确认】市场结果已揭晓: {outcome.value}")
                     return payload
-            if time.monotonic() >= deadline:
+            elapsed = deadline - time.monotonic()
+            now = time.monotonic()
+            if now - last_log_time >= 30:
+                print(f"【等待结算】仍在等待市场结果，剩余 {int(elapsed)}s...")
+                last_log_time = now
+            if elapsed <= 0:
+                print(f"【结算超时】等待市场结果超时，condition_id={condition_id}")
                 return last_payload
             time.sleep(max(1, self.outcome_poll_interval_sec))
 
@@ -984,9 +995,12 @@ class DualWalletEventStrategy:
     def _wait_for_balances_to_settle(self, *, state: DualWalletEventState) -> dict[str, float | None]:
         required_stable_rounds = max(1, self.settlement_stable_rounds)
         deadline = time.monotonic() + max(self.settlement_poll_timeout_sec, self.settlement_poll_interval_sec)
+        remaining = deadline - time.monotonic()
+        print(f"【等待结算】等待钱包余额稳定，超时 {int(remaining)}s，间隔 {int(self.settlement_poll_interval_sec)}s，需 {required_stable_rounds} 轮确认")
         stable_rounds = 0
         last_balances: dict[str, float | None] | None = None
         latest_balances: dict[str, float | None] = self._fetch_wallet_balances_after_settlement()
+        last_log_time = 0
 
         while True:
             latest_balances = self._fetch_wallet_balances_after_settlement()
@@ -997,12 +1011,17 @@ class DualWalletEventStrategy:
                 last_balances = dict(latest_balances)
 
             if stable_rounds >= required_stable_rounds:
-                print(f"【结算】{state.event_name}：钱包余额已稳定，按最终余额对账")
+                print(f"【结算完成】{state.event_name}：钱包余额已稳定（{stable_rounds} 轮），按最终余额对账")
                 self._log_state(state, phase=state.flow_state.value, note="balances_stabilized", payload={"stable_rounds": stable_rounds, "balances": latest_balances})
                 return latest_balances
 
-            if time.monotonic() >= deadline:
-                print(f"【结算】{state.event_name}：余额稳定等待超时，按当前余额对账")
+            elapsed = deadline - time.monotonic()
+            now = time.monotonic()
+            if now - last_log_time >= 30:
+                print(f"【等待结算】余额尚未稳定，第 {stable_rounds}/{required_stable_rounds} 轮，剩余 {int(elapsed)}s...")
+                last_log_time = now
+            if elapsed <= 0:
+                print(f"【结算超时】{state.event_name}：余额稳定等待超时，按当前余额对账")
                 self._log_state(state, phase=state.flow_state.value, note="balance_stabilization_timeout", payload={"stable_rounds": stable_rounds, "balances": latest_balances})
                 return latest_balances
 

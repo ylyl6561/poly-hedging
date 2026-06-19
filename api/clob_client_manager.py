@@ -39,7 +39,7 @@ class ClobClientManager:
             key=account.private_key,
             chain_id=account.chain_id,
             signature_type=account.signature_type,
-            funder=account.proxy_address or account.funder_address,
+            funder=account.funder_address,
         )
         creds = call_with_optional_stderr_suppression(client.create_or_derive_api_key)
         client.set_api_creds(creds)

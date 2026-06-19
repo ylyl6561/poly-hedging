@@ -50,21 +50,28 @@ def load_env_file(skill_file):
 load_env_file(__file__)
 
 CONFIG_SCHEMA = {
-    "strategy_mode": {"default": "dual_wallet_event", "env": "SIMMER_FASTLOOP_STRATEGY_MODE", "type": str, "help": "Strategy mode: dual_wallet_event"},
-    "dual_wallet_entry_timeout_sec": {"default": 100, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "Timeout window for one-side fill handling"},
-    "dual_wallet_force_close_window_sec": {"default": 40, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "Seconds before close to force liquidation"},
-    "dual_wallet_fixed_sell_price": {"default": 0.76, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "Fixed sell/close price for the first version"},
-    "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "Initial UP entry price for dual-wallet event trading"},
-    "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "Initial DOWN entry price for dual-wallet event trading"},
-    "dual_wallet_entry_amount_usd": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT_USD", "type": float, "help": "Per-wallet entry amount"},
-    "dual_wallet_max_consecutive_losses": {"default": 2, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MAX_CONSECUTIVE_LOSSES", "type": int, "help": "Stop trading after this many consecutive losing events"},
-    "dual_wallet_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": int, "help": "Event polling interval"},
-    "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "Number of markets to inspect per loop"},
-    "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "Write candidate decisions to a JSONL journal for replay"},
-    "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "Path to the candidate journal file"},
-    "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "Structured Polymarket multi-account configuration"},
-    "execution_route": {"default": None, "env": "SIMMER_FASTLOOP_EXECUTION_ROUTE", "type": str, "help": "Live execution route: direct_clob or simmer_wallet"},
-    "order_type": {"default": "GTC", "env": "SIMMER_FASTLOOP_ORDER_TYPE", "type": str, "help": "Order type: GTC, FAK, FOK, GTD (default: GTC)"},
+    "strategy_mode": {"default": "dual_wallet_event", "env": "SIMMER_FASTLOOP_STRATEGY_MODE", "type": str, "help": "策略模式：dual_wallet_event"},
+    "dual_wallet_entry_timeout_sec": {"default": 92, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
+    "dual_wallet_force_close_window_sec": {"default": 88, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
+    "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
+    "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
+    "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
+    "dual_wallet_entry_amount_usd": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT_USD", "type": float, "help": "每个钱包的下单金额"},
+    "dual_wallet_max_consecutive_losses": {"default": 2, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MAX_CONSECUTIVE_LOSSES", "type": int, "help": "连续亏损达到该次数后停止交易"},
+    "dual_wallet_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": int, "help": "事件轮询间隔（秒）"},
+    "dual_wallet_outcome_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_INTERVAL_SEC", "type": int, "help": "事件结束后轮询最终结果的间隔（秒）"},
+    "dual_wallet_outcome_poll_timeout_sec": {"default": 900, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_TIMEOUT_SEC", "type": int, "help": "等待市场最终结果的最长时间（秒）"},
+    "dual_wallet_settlement_poll_interval_sec": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_INTERVAL_SEC", "type": int, "help": "等待结算时轮询钱包余额的间隔（秒）"},
+    "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
+    "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
+    "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "每轮最多检查的市场数量"},
+    "dual_wallet_min_seconds_before_start": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
+    "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "是否将候选决策写入 JSONL 日志，便于回放分析"},
+    "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "候选决策日志文件路径"},
+    "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "结构化的 Polymarket 多账户配置"},
+    "execution_route": {"default": None, "env": "SIMMER_FASTLOOP_EXECUTION_ROUTE", "type": str, "help": "实盘执行通道：direct_clob 或 simmer_wallet"},
+    "order_type": {"default": "GTC", "env": "SIMMER_FASTLOOP_ORDER_TYPE", "type": str, "help": "订单类型：GTC、FAK、FOK、GTD（默认 GTC）"},
+    "dual_wallet_dry_run_status_script": {"default": {}, "env": "SIMMER_FASTLOOP_DUAL_WALLET_DRY_RUN_STATUS_SCRIPT", "type": dict, "help": "dry_run 下按账号/side脚本化返回订单状态，用于无真实下单验证 Step 6/7/8"},
 }
 
 WALLET_LINK_RETRIES = int(os.environ.get("SIMMER_WALLET_LINK_RETRIES", "4"))
@@ -166,7 +173,8 @@ def resolve_config(skill_file):
     global DUAL_WALLET_ENTRY_TIMEOUT_SEC, DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC
     global DUAL_WALLET_FIXED_SELL_PRICE, DUAL_WALLET_ENTRY_AMOUNT_USD
     global DUAL_WALLET_MAX_CONSECUTIVE_LOSSES, DUAL_WALLET_POLL_INTERVAL_SEC
-    global DUAL_WALLET_EVENT_QUERY_LIMIT, CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE
+    global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START, CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE
+    global DUAL_WALLET_DRY_RUN_STATUS_SCRIPT
 
     STRATEGY_MODE = cfg.get("strategy_mode", "dual_wallet_event").lower()
     route = cfg.get("execution_route")
@@ -180,7 +188,7 @@ def resolve_config(skill_file):
 
     POLYMARKET_ACCOUNTS = cfg.get("polymarket_accounts", [])
     DUAL_WALLET_ENTRY_TIMEOUT_SEC = cfg.get("dual_wallet_entry_timeout_sec", 100)
-    DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC = cfg.get("dual_wallet_force_close_window_sec", 40)
+    DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC = cfg.get("dual_wallet_force_close_window_sec", 60)
     DUAL_WALLET_FIXED_SELL_PRICE = cfg.get("dual_wallet_fixed_sell_price", 0.76)
     DUAL_WALLET_ENTRY_UP_PRICE = cfg.get("dual_wallet_entry_up_price", 0.5)
     DUAL_WALLET_ENTRY_DOWN_PRICE = cfg.get("dual_wallet_entry_down_price", 0.5)
@@ -188,6 +196,8 @@ def resolve_config(skill_file):
     DUAL_WALLET_MAX_CONSECUTIVE_LOSSES = cfg.get("dual_wallet_max_consecutive_losses", 2)
     DUAL_WALLET_POLL_INTERVAL_SEC = cfg.get("dual_wallet_poll_interval_sec", 5)
     DUAL_WALLET_EVENT_QUERY_LIMIT = cfg.get("dual_wallet_event_query_limit", 20)
+    DUAL_WALLET_MIN_SECONDS_BEFORE_START = cfg.get("dual_wallet_min_seconds_before_start", 15)
+    DUAL_WALLET_DRY_RUN_STATUS_SCRIPT = cfg.get("dual_wallet_dry_run_status_script", {})
     CANDIDATE_JOURNAL = cfg.get("candidate_journal", False)
     CANDIDATE_JOURNAL_FILE = cfg.get("candidate_journal_file", "candidate_journal.jsonl")
 

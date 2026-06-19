@@ -54,7 +54,7 @@ def _redact_secret(value: str | None, *, left: int = 6, right: int = 4) -> str |
     return f"{text[:left]}...{text[-right:]}"
 
 def _resolve_direct_clob_funder(account: AccountContext) -> str | None:
-    return account.funder_address or DIRECT_CLOB_FUNDER
+    return account.funder_address
 
 
 def reset_direct_clob_client(*, account: AccountContext | None = None):
@@ -382,7 +382,7 @@ def fetch_side_orderbook_price(clob_token_ids, side):
     if not clob_token_ids or len(clob_token_ids) < 2:
         return None
     side = (side or "").lower()
-    token_idx = 0 if side == "yes" else 1 if side == "no" else None
+    token_idx = 0 if side in ("yes", "up") else 1 if side in ("no", "down") else None
     if token_idx is None:
         return None
 
@@ -885,19 +885,30 @@ def _extract_fill_price(result):
 
 
 def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0, condition_id=None, market_id=None,
-                            order_type_override=None, post_only=False, mock=False, account: AccountContext | None = None):
-    """Place a BUY order directly on Polymarket CLOB V2 using the side token id.
+                            order_type_override=None, post_only=False, mock=False, account: AccountContext | None = None,
+                            trade_side: str = "buy"):
+    """Place a BUY or SELL order directly on Polymarket CLOB V2 using the side token id.
+
+    `side` (legacy positional) selects the outcome token ("yes"/"up" -> clob_token_ids[0],
+    "no"/"down" -> clob_token_ids[1]). `trade_side` selects the order direction
+    ("buy" = open/increase position, "sell" = close/decrease position).
+
+    For BUY: limit `OrderArgs.size=shares`, market `MarketOrderArgs.amount=USD`.
+    For SELL: limit `OrderArgs.size=shares` (tokens sold), market `MarketOrderArgs.amount=tokens_sold`
+    (Polymarket V2 MarketOrderArgs.amount is the token count when side=SELL).
 
     Follows Polymarket's current py-clob-client-v2 flow:
     - outcome token ids are used to build orders
     - token id is used to resolve tick size / negative risk / parent market
     - condition_id is used only when querying market metadata
-    - FAK/FOK orders use MarketOrderArgs where amount is USD for BUY orders
+    - FAK/FOK orders use MarketOrderArgs where amount units depend on trade_side
     - GTC PostOnly orders are placed when post_only=True
 
     Args:
-        side: "yes" or "no"
-        amount: USD amount to spend
+        side: "yes"/"up" or "no"/"down" (selects which outcome token)
+        amount: USD amount to spend (BUY) OR token count to sell (SELL) — but for SELL limit
+            orders the caller should pass token count, and the function will compute shares
+            accordingly. For SELL market orders, amount is the number of tokens to sell.
         price: limit price or market-order worst acceptable price (0-1)
         clob_token_ids: [yes_token_id, no_token_id]
         fee_rate_bps: retained for compatibility; V2 SDK resolves fees internally
@@ -905,10 +916,15 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         market_id: display ID (can be slug or UUID, NOT used for CLOB API calls)
         order_type_override: Force GTC/FAK/FOK/GTD (default: from config ORDER_TYPE)
         post_only: If True, set PostOnly on GTC orders (for resting hedge orders)
+        trade_side: "buy" or "sell" (selects the CLOB order direction)
     """
+    trade_side_norm = str(trade_side or "buy").lower()
+    if trade_side_norm not in {"buy", "sell"}:
+        return {"success": False, "error": f"invalid_trade_side:{trade_side_norm}"}
+    is_sell = trade_side_norm == "sell"
     if not clob_token_ids or len(clob_token_ids) < 2:
         return {"success": False, "error": "missing_clob_token_ids"}
-    token_id = clob_token_ids[0] if side.lower() == "yes" else clob_token_ids[1]
+    token_id = clob_token_ids[0] if side.lower() in ("yes", "up") else clob_token_ids[1]
     if account is None:
         raise ValueError("direct_polymarket_trade requires account")
     if not token_id:
@@ -916,22 +932,32 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
     if price <= 0 or price >= 1:
         return {"success": False, "error": f"invalid_direct_price:{price}"}
     if mock:
+        # Mock: BUY pays USD `amount` to buy (amount/price) tokens; SELL sells `amount` tokens at price.
+        if is_sell:
+            mock_shares = float(amount or 0.0)
+            mock_amount = mock_shares
+        else:
+            mock_shares = (amount / price) if (price and amount) else None
+            mock_amount = amount
         return {
             "success": True,
             "mock": True,
             "side": side.lower(),
-            "amount": amount,
+            "trade_side": trade_side_norm,
+            "amount": mock_amount,
             "fill_price": price,
-            "shares": (amount / price) if price else None,
-            "order_id": f"MOCK-{side.lower()}-{str(condition_id or token_id)[:12]}",
-            "trade_id": f"MOCK-{side.lower()}-{str(condition_id or token_id)[:12]}",
+            "shares": mock_shares,
+            "shares_bought": mock_shares if not is_sell else None,
+            "shares_sold": mock_shares if is_sell else None,
+            "order_id": f"MOCK-{trade_side_norm}-{side.lower()}-{str(condition_id or token_id)[:12]}",
+            "trade_id": f"MOCK-{trade_side_norm}-{side.lower()}-{str(condition_id or token_id)[:12]}",
         }
 
     try:
         from py_clob_client_v2 import (
             MarketOrderArgs, OrderArgs, OrderType, PartialCreateOrderOptions,
         )
-        from py_clob_client_v2.order_builder.constants import BUY
+        from py_clob_client_v2.order_builder.constants import BUY, SELL
     except ImportError as e:
         return {"success": False, "error": f"py_clob_client_v2_unavailable:{e}"}
 
@@ -1101,23 +1127,30 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         return response
 
     def _preflight_immediate_fill_quote(order_type, current_price):
-        """Re-quote before FAK/FOK submission to avoid sending stale no-fill orders."""
+        """Re-quote before FAK/FOK submission to avoid sending stale no-fill orders.
+
+        For BUY (trade_side=buy): requires best_ask <= limit_price (we can buy at ask).
+        For SELL (trade_side=sell): requires best_bid >= limit_price (we can sell at bid).
+        """
         order_type_name = _order_type_name(order_type)
         if order_type_name not in ("FAK", "FOK"):
             return current_price, None
 
         side_book = fetch_side_orderbook_price(clob_token_ids, side)
         if not side_book:
+            error_code = "direct_clob_no_executable_ask" if not is_sell else "direct_clob_no_executable_bid"
             return None, {
                 "success": False,
-                "error": "direct_clob_no_executable_ask",
+                "error": error_code,
                 "direct_clob": True,
-                "skip_reason": "direct_clob_no_executable_ask",
+                "skip_reason": error_code,
             }
 
-        best_ask = side_book.get("best_ask")
+        # For BUY we need best_ask (price sellers ask); for SELL we need best_bid (price buyers bid)
+        quote_key = "best_ask" if not is_sell else "best_bid"
+        quote_price = side_book.get(quote_key)
         try:
-            best_ask = float(best_ask)
+            quote_price = float(quote_price)
             limit_price = float(current_price)
         except (TypeError, ValueError):
             return None, {
@@ -1128,30 +1161,52 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
                 "side_book": side_book,
             }
 
-        # Keep the strategy's original price as the worst acceptable price. If
-        # the top ask has already moved above it, a FAK/FOK would be killed.
-        if best_ask > limit_price + 1e-9:
-            return None, {
-                "success": False,
-                "error": "direct_clob_quote_moved",
-                "direct_clob": True,
-                "skip_reason": "direct_clob_quote_moved",
-                "best_ask": best_ask,
-                "limit_price": limit_price,
-                "side_book": side_book,
-            }
+        # BUY: best_ask must be <= limit_price (we can buy at-or-below our worst acceptable).
+        # SELL: best_bid must be >= limit_price (we can sell at-or-above our worst acceptable).
+        # If quote moved unfavorably beyond our limit, the FAK/FOK would be killed.
+        if not is_sell:
+            if quote_price > limit_price + 1e-9:
+                return None, {
+                    "success": False,
+                    "error": "direct_clob_quote_moved",
+                    "direct_clob": True,
+                    "skip_reason": "direct_clob_quote_moved",
+                    "best_ask": quote_price,
+                    "limit_price": limit_price,
+                    "side_book": side_book,
+                }
+        else:
+            if quote_price + 1e-9 < limit_price:
+                return None, {
+                    "success": False,
+                    "error": "direct_clob_quote_moved",
+                    "direct_clob": True,
+                    "skip_reason": "direct_clob_quote_moved",
+                    "best_bid": quote_price,
+                    "limit_price": limit_price,
+                    "side_book": side_book,
+                }
 
         return limit_price, None
 
     def _create_and_post_order(client, token_id, order_type, options, order_price):
-        """Create, sign, and submit the V2 CLOB order."""
+        """Create, sign, and submit the V2 CLOB order.
+
+        For BUY (trade_side=buy): MarketOrderArgs.amount is USD; limit OrderArgs.size is shares.
+        For SELL (trade_side=sell): MarketOrderArgs.amount is token count to sell;
+        limit OrderArgs.size is shares (tokens sold).
+        """
         order_type_name = _order_type_name(order_type)
+        order_side_const = SELL if is_sell else BUY
 
         if order_type_name in ("FAK", "FOK"):
+            # SELL market order: amount must be the token count to sell (not USD).
+            # We trust the caller to pass the right units; for SELL callers pass token count
+            # (already converted in place_sell). For BUY callers pass USD.
             order_args = MarketOrderArgs(
                 token_id=str(token_id),
-                amount=round(float(amount), 2),
-                side=BUY,
+                amount=round(float(amount), 2) if not is_sell else round(float(amount), 4),
+                side=order_side_const,
                 price=float(order_price),
                 order_type=order_type,
             )
@@ -1161,12 +1216,17 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
                 order_type=order_type,
             )
 
-        shares = float(amount) / float(order_price)
+        # Limit order: size is always shares (tokens). For BUY, shares = USD/price.
+        # For SELL, amount is already the share count to sell.
+        if is_sell:
+            shares = float(amount)
+        else:
+            shares = float(amount) / float(order_price)
         order_args = OrderArgs(
             token_id=str(token_id),
             price=float(order_price),
             size=shares,
-            side=BUY,
+            side=order_side_const,
         )
         return client.create_and_post_order(
             order_args=order_args,
@@ -1271,19 +1331,30 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
     # Extract order ID and build response
     order_id = _extract_order_id(result)
     fill_price = _extract_fill_price(result)
-    shares = float(amount) / float(order_price)
-    return {
+    if is_sell:
+        # SELL: amount is the token count we tried to sell; shares_sold = token count.
+        shares = float(amount)
+    else:
+        # BUY: amount is USD, shares_bought = amount / price.
+        shares = float(amount) / float(order_price)
+    response = {
         "success": True,
         "trade_id": order_id,
         "fill_price": fill_price,
-        "shares_bought": shares,
-        "shares": shares,
+        "trade_side": trade_side_norm,
         "error": None,
         "simulated": False,
         "direct_clob": True,
         "condition_id": market_context.get("condition_id"),
+        "token_id": token_id,  # Include token_id for logging/debugging
         "clob_order": result,
     }
+    if is_sell:
+        response["shares_sold"] = shares
+    else:
+        response["shares_bought"] = shares
+    response["shares"] = shares
+    return response
 
 
 # =============================================================================
@@ -1366,15 +1437,26 @@ def cancel_order(order_id: str, *, account: AccountContext, mock: bool = False) 
 
     try:
         client = get_direct_clob_client(account=account)
-        result = client.cancel_order(order_id)
+        from py_clob_client_v2.clob_types import OrderPayload
+        result = client.cancel_order(OrderPayload(orderID=order_id))
         if result is True or (isinstance(result, dict) and result.get("success") is not False):
             return {"success": True, "order_id": order_id, "cancelled": True}
         return {"success": False, "error": f"cancel_failed: {result}"}
     except Exception as e:
         err_str = str(e)
-        if "order not found" in err_str.lower() or "not found" in err_str.lower():
-            # Already filled or cancelled — treat as success
-            return {"success": True, "order_id": order_id, "cancelled": True, "note": "not_found_treated_as_cancelled"}
+        err_lower = err_str.lower()
+        # 已成交/已撤/订单非活跃/市场关闭/无匹配/过期的撤单请求，本质上已经达到"挂单不在簿"的效果，
+        # 都应按成功处理（不会再次发起撤单），并把 note 写明便于日志追踪。
+        benign_markers = (
+            "order not found", "not found",
+            "already matched", "already matched or canceled",
+            "already canceled", "already cancelled", "already cancelled or matched",
+            "order is not active", "not active", "no open order", "no matching order",
+            "invalid order", "market closed", "market resolved", "expired",
+            "cancel-only", "not accepting orders",
+        )
+        if any(marker in err_lower for marker in benign_markers):
+            return {"success": True, "order_id": order_id, "cancelled": True, "note": f"benign_cancel:{err_str[:200]}"}
         return {"success": False, "error": f"cancel_order_error: {e}"}
 
 
@@ -1408,6 +1490,13 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
 
         size_matched = result.get("size_matched") or result.get("filled_size") or result.get("matched_size")
         created_price = result.get("price")
+        average_fill_price = _extract_fill_price(result)
+        filled_amount_usd = None
+        try:
+            if size_matched is not None and average_fill_price is not None:
+                filled_amount_usd = float(size_matched) * float(average_fill_price)
+        except (TypeError, ValueError):
+            filled_amount_usd = None
         return {
             "success": True,
             "order_id": order_id,
@@ -1415,10 +1504,21 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
             "raw_status": status,
             "price": created_price,
             "shares": size_matched,
+            "filled_shares": size_matched,
+            "average_fill_price": average_fill_price,
+            "filled_amount_usd": filled_amount_usd,
             "raw": result,
         }
     except Exception as e:
-        err_str = str(e).lower()
-        if "order not found" in err_str or "not found" in err_str:
-            return {"success": True, "order_id": order_id, "status": "cancelled", "note": "not_found_treated_as_cancelled"}
+        err_str = str(e)
+        err_lower = err_str.lower()
+        benign_markers = (
+            "order not found", "not found",
+            "already matched", "already matched or canceled",
+            "already canceled", "already cancelled", "already cancelled or matched",
+            "order is not active", "not active", "no open order", "no matching order",
+            "market closed", "market resolved", "expired",
+        )
+        if any(marker in err_lower for marker in benign_markers):
+            return {"success": True, "order_id": order_id, "status": "cancelled", "note": f"benign_status:{err_str[:200]}"}
         return {"success": False, "order_id": order_id, "error": f"fetch_order_status_error: {e}"}

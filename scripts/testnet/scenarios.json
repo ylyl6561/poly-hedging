@@ -1,0 +1,97 @@
+{
+  "scenarios": {
+    "single_side_fill": {
+      "description": "UP 侧成交 → 撤 DOWN 侧 → 强平窗口内 FAK 平仓（DOWN 侧撤单=0 成交=0）",
+      "fill_side": "UP",
+      "fill_wallet": "wallet_b",
+      "status_script": {
+        "wallet_a": {
+          "by_side": {
+            "UP": ["submitted", "submitted"],
+            "DOWN": ["submitted", "submitted"]
+          }
+        },
+        "wallet_b": {
+          "by_side": {
+            "UP": ["submitted", "filled"],
+            "DOWN": ["submitted", "submitted"]
+          }
+        }
+      },
+      "seconds_to_end": 90,
+      "force_close_window_sec": 60,
+      "entry_timeout_sec": 3,
+      "expected_trigger_reason": "single_side_fill_pending_close",
+      "expected_filled_count": 1
+    },
+    "both_sides_fill": {
+      "description": "双边都成交 → 跳过强平窗口 → 走正常结算",
+      "fill_side": "BOTH",
+      "status_script": {
+        "wallet_a": {
+          "by_side": {
+            "UP": ["submitted", "submitted"],
+            "DOWN": ["submitted", "filled"]
+          }
+        },
+        "wallet_b": {
+          "by_side": {
+            "UP": ["submitted", "filled"],
+            "DOWN": ["submitted", "submitted"]
+          }
+        }
+      },
+      "seconds_to_end": 90,
+      "force_close_window_sec": 60,
+      "entry_timeout_sec": 3,
+      "expected_trigger_reason": "both_sides_filled",
+      "expected_filled_count": 2
+    },
+    "force_close_window": {
+      "description": "双方都没成交 → 进入强平窗口 → 撤单+无成交份额跳过平仓",
+      "fill_side": "NONE",
+      "status_script": {
+        "wallet_a": {
+          "by_side": {
+            "UP": ["submitted", "submitted", "submitted"],
+            "DOWN": ["submitted", "submitted", "submitted"]
+          }
+        },
+        "wallet_b": {
+          "by_side": {
+            "UP": ["submitted", "submitted", "submitted"],
+            "DOWN": ["submitted", "submitted", "submitted"]
+          }
+        }
+      },
+      "seconds_to_end": 50,
+      "force_close_window_sec": 60,
+      "entry_timeout_sec": 2,
+      "expected_trigger_reason": "force_close_window",
+      "expected_filled_count": 0
+    },
+    "double_timeout": {
+      "description": "双方都未成交 → 等待超时（事件尚未进入强平窗口）→ 走兜底路径",
+      "fill_side": "NONE",
+      "status_script": {
+        "wallet_a": {
+          "by_side": {
+            "UP": ["submitted", "submitted", "submitted"],
+            "DOWN": ["submitted", "submitted", "submitted"]
+          }
+        },
+        "wallet_b": {
+          "by_side": {
+            "UP": ["submitted", "submitted", "submitted"],
+            "DOWN": ["submitted", "submitted", "submitted"]
+          }
+        }
+      },
+      "seconds_to_end": 200,
+      "force_close_window_sec": 30,
+      "entry_timeout_sec": 2,
+      "expected_trigger_reason": "wait_timeout_no_clear_fill",
+      "expected_filled_count": 0
+    }
+  }
+}

@@ -62,6 +62,10 @@ class EventTradeRecord:
     shares: float | None
     order_id: str | None
     status: str | None
+    trigger_reason: str | None
+    trigger_detail: str | None
+    first_fill_wallet_id: str | None
+    second_fill_wallet_id: str | None
     outcome: str
     event_total_pnl_usd: float
     wallet_pnl_usd: float
@@ -131,6 +135,10 @@ def export_dual_wallet_event_to_excel(
             shares=_safe_float(snapshot.shares),
             order_id=snapshot.order_id,
             status=snapshot.status,
+            trigger_reason=getattr(event_state, "trigger_reason", None),
+            trigger_detail=getattr(event_state, "trigger_detail", None),
+            first_fill_wallet_id=getattr(event_state, "first_fill_wallet_id", None),
+            second_fill_wallet_id=getattr(event_state, "second_fill_wallet_id", None),
             outcome=summary.outcome.value,
             event_total_pnl_usd=float(summary.total_pnl_usd),
             wallet_pnl_usd=float(wallet_pnl),
@@ -141,7 +149,8 @@ def export_dual_wallet_event_to_excel(
     _append_to_csv(csv_path, rows)
     try:
         from openpyxl import Workbook, load_workbook
-    except Exception:
+    except Exception as exc:
+        print(f"【导出】openpyxl unavailable，跳过 xlsx 导出: {exc}")
         return
 
     headers = list(rows[0].keys()) if rows else []

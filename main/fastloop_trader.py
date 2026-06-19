@@ -108,7 +108,7 @@ def main():
     parser = argparse.ArgumentParser(description="Dual-wallet event trading")
     parser.add_argument("--live", action="store_true", help="Execute real trades")
     parser.add_argument("--set", action="append", metavar="KEY=VALUE", help="Update config")
-    parser.add_argument("--loop", action="store_true", help="Keep running until interrupted")
+    parser.add_argument("--once", action="store_true", help="Run one polling cycle and exit")
     parser.add_argument("--quiet", "-q", action="store_true", help="Only output on trades/errors")
     args = parser.parse_args()
 
@@ -191,16 +191,21 @@ def main():
             structured_log.record_event_state(event_name=event_name, event_id=condition_id, flow_state="finished", wallet_status={wallet_id: f"{pnl:.4f}" for wallet_id, pnl in summary.wallet_pnl_usd.items()}, note=f"profit={summary.is_profit}")
             structured_log.flush()
             print(f"【事件结果】{event_name}：{'盈利' if summary.is_profit else '亏损'}；总收益={summary.total_pnl_usd:.4f}")
+            if strategy.should_halt():
+                structured_log.set_halted(True)
+                print(f"【停机】{strategy.halt_reason() or 'unknown_reason'}，后续事件不再继续")
+                break
 
-    if args.loop:
+    if args.once:
+        run_once()
+    else:
         try:
             while True:
                 run_once()
+                print(f"【轮询】sleep {int(cfg.get('dual_wallet_poll_interval_sec', 5))}s 后继续扫描下一批事件")
                 time.sleep(int(cfg.get("dual_wallet_poll_interval_sec", 5)))
         except KeyboardInterrupt:
             print("\nStopped.")
-    else:
-        run_once()
 
 
 if __name__ == "__main__":

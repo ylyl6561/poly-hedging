@@ -27,6 +27,32 @@ class OrderSide(str, Enum):
     UP = "UP"
     DOWN = "DOWN"
 
+    @property
+    def token_index(self) -> int:
+        """clob_token_ids[0]=UP/YES, clob_token_ids[1]=DOWN/NO."""
+        return 0 if self == OrderSide.UP else 1
+
+    @classmethod
+    def from_string(cls, value: str) -> "OrderSide":
+        """Parse 'up'/'yes'/'UP'/'YES' etc into OrderSide, defaulting to UP."""
+        lower = value.lower()
+        if lower in ("up", "yes"):
+            return cls.UP
+        if lower in ("down", "no"):
+            return cls.DOWN
+        raise ValueError(f"Unknown side value: {value!r}")
+
+    def to_api_str(self) -> str:
+        """Return the string expected by Polymarket CLOB API (yes/no)."""
+        return "yes" if self == OrderSide.UP else "no"
+
+
+class SideTokenIndex:
+    """Canonical constants for clob_token_ids array indexing."""
+
+    UP = 0    # clob_token_ids[0] = YES token
+    DOWN = 1  # clob_token_ids[1] = NO token
+
 
 class OperationType(str, Enum):
     PLACE = "挂单"
@@ -84,6 +110,11 @@ class OrderSnapshot:
     shares: float | None = None
     status: str | None = None
     close_price: float | None = None
+    filled_amount_usd: float | None = None
+    filled_shares: float | None = None
+    average_fill_price: float | None = None
+    raw_status: str | None = None
+    error: str | None = None
 
     @property
     def timestamp_cn(self) -> str:
@@ -137,6 +168,7 @@ class DualWalletEventState:
     x_timeout_sec: int
     flow_state: EventFlowState = EventFlowState.NEW
     wallet_orders: dict[str, OrderSnapshot] = field(default_factory=dict)
+    wallet_order_history: dict[str, list[OrderSnapshot]] = field(default_factory=dict)
     wallet_status: dict[str, str] = field(default_factory=dict)
     first_fill_wallet_id: str | None = None
     second_fill_wallet_id: str | None = None
@@ -144,13 +176,20 @@ class DualWalletEventState:
     result_summary: EventResultSummary | None = None
     halted_reason: str | None = None
     side_by_wallet_id: dict[str, OrderSide] = field(default_factory=dict)
+    trigger_reason: str | None = None
+    trigger_detail: str | None = None
 
     def mark_order(self, snapshot: OrderSnapshot) -> None:
+        history = self.wallet_order_history.setdefault(snapshot.wallet.wallet_id, [])
+        history.append(snapshot)
         self.wallet_orders[snapshot.wallet.wallet_id] = snapshot
         self.wallet_status[snapshot.wallet.wallet_id] = snapshot.status or snapshot.operation.value
 
     def get_order(self, wallet_id: str) -> OrderSnapshot | None:
         return self.wallet_orders.get(wallet_id)
+
+    def get_order_history(self, wallet_id: str) -> list[OrderSnapshot]:
+        return list(self.wallet_order_history.get(wallet_id, []))
 
     def count_filled(self) -> int:
         return sum(1 for s in self.wallet_status.values() if s == OrderStatus.FILLED.value)

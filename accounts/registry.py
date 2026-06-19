@@ -94,16 +94,8 @@ class AccountRegistry:
             wallet_address = Account.from_key(private_key).address
         except Exception as exc:
             raise ValueError(f"invalid private key for account {spec.account_id}: {spec.private_key_env}") from exc
-        funder_address = None
-        if spec.funder_env:
-            funder_address = os.environ.get(spec.funder_env)
-        proxy_address = None
-        if spec.proxy_address_env:
-            proxy_address = os.environ.get(spec.proxy_address_env)
-        if proxy_address:
-            funder_address = proxy_address
-        if not funder_address:
-            funder_address = core_config.DIRECT_CLOB_FUNDER or wallet_address
+        funder_address = os.environ.get(spec.funder_env) if spec.funder_env else None
+        proxy_address = os.environ.get(spec.proxy_address_env) if spec.proxy_address_env else None
         return AccountContext(
             account_id=spec.account_id,
             label=spec.label,

@@ -24,5 +24,23 @@
       "tags": ["dual_wallet", "trading"]
     }
   ],
+  "dual_wallet_dry_run_status_script": {
+    "wallet_a": {
+      "by_side": {
+        "UP": ["submitted", "filled"],
+        "DOWN": ["submitted", "submitted"]
+      },
+      "fill_price": 0.5,
+      "filled_amount_usd": 10.0
+    },
+    "wallet_b": {
+      "by_side": {
+        "UP": ["submitted", "submitted"],
+        "DOWN": ["submitted", "filled"]
+      },
+      "fill_price": 0.5,
+      "filled_amount_usd": 10.0
+    }
+  },
   "_comment_3": "Oracle 延迟策略配置（oracle_latency 模式使用）："
 }

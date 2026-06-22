@@ -160,7 +160,7 @@ class OrderExecutorV2:
             OrderOperationResult: 包含执行结果和订单快照
         """
         outcome = self.executor.place_entry(
-            wallet=wallet.account,
+            wallet=wallet,
             event_name=event_name,
             side=side,
             amount_usd=amount_usd,
@@ -217,7 +217,7 @@ class OrderExecutorV2:
         sell_amount_usd = shares * sell_price
 
         outcome = self.executor.place_sell(
-            wallet=wallet.account,
+            wallet=wallet,
             event_name=event_name,
             side=side,
             shares=shares,
@@ -275,7 +275,7 @@ class OrderExecutorV2:
         close_amount_usd = shares * close_price
 
         outcome = self.executor.place_sell(
-            wallet=wallet.account,
+            wallet=wallet,
             event_name=event_name,
             side=side,
             shares=shares,
@@ -320,7 +320,7 @@ class OrderExecutorV2:
         Returns:
             OrderOperationResult: 包含执行结果和订单快照
         """
-        outcome = self.executor.cancel(order_id, wallet=wallet.account)
+        outcome = self.executor.cancel(order_id, wallet=wallet)
 
         snapshot = self._build_snapshot(
             wallet=wallet,
@@ -348,7 +348,7 @@ class OrderExecutorV2:
         Returns:
             (ExecutionOutcome, OrderSnapshot): 执行结果和更新后的快照
         """
-        outcome = self.executor.fetch_order_status(order_id, wallet=wallet.account)
+        outcome = self.executor.fetch_order_status(order_id, wallet=wallet)
 
         # 构建更新后的快照（如果原快照存在）
         snapshot = None

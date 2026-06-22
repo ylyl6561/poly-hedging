@@ -140,13 +140,14 @@ def main():
     def run_once():
         markets = _pick_events(int(cfg.get("dual_wallet_event_query_limit", 20)))
         structured_log.record_markets(markets)
-        if not markets:
-            print("No markets found.")
-            return
+
+        new_count = 0
+        skip_count = 0
+
         for market in markets:
             if strategy.should_halt():
                 halt_reason = strategy.halt_reason() or "max_consecutive_losses"
-                print(f"【停机】{halt_reason}，已停止所有交易")
+                print(f"\n⚠️ 停机: {halt_reason}")
                 structured_log.set_halted(True)
                 structured_log.record_event(event_name=market.get("question") or market.get("slug") or "Unknown Event", event_id=market.get("condition_id") or "", phase="halted", payload={"reason": halt_reason})
                 structured_log.flush()
@@ -158,21 +159,18 @@ def main():
             start_time, end_time = _build_event_times(market)
             if not start_time or not end_time:
                 continue
-            if datetime.now(timezone.utc) >= start_time:
-                print(f"【跳过】{event_name}：当前事件已开始，等待下一个未开始事件")
-                structured_log.record_event(
-                    event_name=event_name,
-                    event_id=condition_id,
-                    phase="skipped_started",
-                    payload={
-                        "market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")},
-                        "start_time": start_time.isoformat(),
-                        "end_time": end_time.isoformat(),
-                        "reason": "event_already_started",
-                    },
-                )
+
+            # 事件已开始或时间不足，跳过
+            now = datetime.now(timezone.utc)
+            if now >= start_time:
+                skip_count += 1
+                continue
+            time_to_start = (start_time - now).total_seconds()
+            if time_to_start < 180:  # 硬编码最小提前量
+                skip_count += 1
                 continue
 
+            new_count += 1
             print(f"【事件】{event_name}")
             structured_log.record_event(event_name=event_name, event_id=condition_id, phase="start", payload={"market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")}, "start_time": start_time.isoformat(), "end_time": end_time.isoformat()})
             summary = strategy.run_event(
@@ -190,11 +188,15 @@ def main():
             structured_log.record_result(summary)
             structured_log.record_event_state(event_name=event_name, event_id=condition_id, flow_state="finished", wallet_status={wallet_id: f"{pnl:.4f}" for wallet_id, pnl in summary.wallet_pnl_usd.items()}, note=f"profit={summary.is_profit}")
             structured_log.flush()
-            print(f"【事件结果】{event_name}：{'盈利' if summary.is_profit else '亏损'}；总收益={summary.total_pnl_usd:.4f}")
+
             if strategy.should_halt():
                 structured_log.set_halted(True)
-                print(f"【停机】{strategy.halt_reason() or 'unknown_reason'}，后续事件不再继续")
+                print(f"\n⚠️ 停机: {strategy.halt_reason() or 'unknown_reason'}")
                 break
+
+        # 只在实际处理了事件时打印轮询统计
+        if new_count > 0 or skip_count > 0:
+            print(f"轮询完成: 新事件={new_count}, 跳过={skip_count}")
 
     if args.once:
         run_once()
@@ -202,7 +204,6 @@ def main():
         try:
             while True:
                 run_once()
-                print(f"【轮询】sleep {int(cfg.get('dual_wallet_poll_interval_sec', 5))}s 后继续扫描下一批事件")
                 time.sleep(int(cfg.get("dual_wallet_poll_interval_sec", 5)))
         except KeyboardInterrupt:
             print("\nStopped.")

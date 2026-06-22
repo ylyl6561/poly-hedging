@@ -1,8 +1,17 @@
+# OS files
 .DS_Store
+
+# Bytecode cache
 __pycache__/
 *.pyc
 *.py[cod]
-
+*.pyo
+state/__pycache__/
+strategy/__pycache__/
+tests/__pycache__/
+core/__pycache__/
+market/__pycache__/
+# Virtual environments
 .env
 .env.*
 !.env.example
@@ -10,6 +19,7 @@ __pycache__/
 .venv_*/
 venv/
 
+# Run outputs
 runs/
 fastloop_*_20*/
 observe_*.log
@@ -22,4 +32,3 @@ entered_markets.json
 market_quality_state.json
 replay.json
 daily_spend.json
-tests/

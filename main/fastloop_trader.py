@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 _project_root = Path(__file__).parent.parent.resolve()
@@ -18,6 +18,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 from core import load_env_file, resolve_config, update_config, CONFIG_SCHEMA
 from state import StructuredRunLog
+from state.trade_state import init_trade_state, get_trade_state_manager, get_async_outcome_poller, TradePhase
 from market import discover_fast_market_markets
 from strategy.dual_wallet_event_strategy import DualWalletEventStrategy
 
@@ -97,11 +98,42 @@ def _pick_events(limit: int):
 
 
 def _build_event_times(market: dict):
+    """
+    构建事件的 start_time 和 end_time。
+
+    注意：market.get("end_time") 可能返回：
+    1. timezone-aware datetime（来自 Simmer SDK 或 deterministic slot 解析）
+    2. Unix 时间戳（来自某些 API）
+
+    当返回的是 datetime 对象时，它应该是 UTC 或带有时区信息的。
+    我们不能简单地用 fromtimestamp 转换。
+    """
     end_time = market.get("end_time")
     if end_time is None:
         return None, None
-    start_time = datetime.fromtimestamp(end_time.timestamp() - 300, tz=timezone.utc)
-    return start_time, end_time
+
+    # 如果已经是 datetime 对象（可能是 naive 或 aware）
+    if isinstance(end_time, datetime):
+        # 如果是 naive datetime，假设它是 UTC
+        if end_time.tzinfo is None:
+            end_time_utc = end_time.replace(tzinfo=timezone.utc)
+        else:
+            # 转换为 UTC
+            end_time_utc = end_time.astimezone(timezone.utc)
+        start_time_utc = end_time_utc - timedelta(minutes=5)
+        return start_time_utc, end_time_utc
+
+    # 如果是 Unix 时间戳（秒或毫秒）
+    try:
+        ts = float(end_time)
+        # 处理毫秒时间戳
+        if ts > 1e12:
+            ts = ts / 1000
+        end_time_utc = datetime.fromtimestamp(ts, tz=timezone.utc)
+        start_time_utc = end_time_utc - timedelta(minutes=5)
+        return start_time_utc, end_time_utc
+    except (TypeError, ValueError):
+        return None, None
 
 
 def main():
@@ -110,6 +142,10 @@ def main():
     parser.add_argument("--set", action="append", metavar="KEY=VALUE", help="Update config")
     parser.add_argument("--once", action="store_true", help="Run one polling cycle and exit")
     parser.add_argument("--quiet", "-q", action="store_true", help="Only output on trades/errors")
+    parser.add_argument("--no-async", action="store_true", help="Disable async outcome polling")
+    parser.add_argument("--mock", action="store_true", help="Mock mode: simulate orders without real execution")
+    parser.add_argument("--mock-fill-side", default="UP", choices=["UP", "DOWN"], help="Mock: which side fills first")
+    parser.add_argument("--mock-fill-after", type=float, default=5.0, help="Mock: seconds until fill")
     args = parser.parse_args()
 
     if args.set:
@@ -135,7 +171,25 @@ def main():
     dry_run = not args.live
     run_folder, structured_log = setup_run_logging(is_live=args.live)
     cfg = resolve_config(__file__)
-    strategy = DualWalletEventStrategy(run_folder=run_folder, dry_run=dry_run, config=cfg, structured_log=structured_log)
+
+    # 初始化交易状态管理器
+    state_manager = init_trade_state()
+
+    # 初始化异步轮询器
+    async_poller = get_async_outcome_poller()
+    if not args.no_async:
+        async_poller.start()
+
+    # 创建策略（支持 mock 模式）
+    strategy = DualWalletEventStrategy(
+        run_folder=run_folder,
+        dry_run=dry_run,
+        config=cfg,
+        structured_log=structured_log,
+        mock_mode=args.mock,
+        mock_fill_side=args.mock_fill_side,
+        mock_fill_after_sec=args.mock_fill_after,
+    )
 
     def run_once():
         markets = _pick_events(int(cfg.get("dual_wallet_event_query_limit", 20)))
@@ -155,6 +209,16 @@ def main():
 
             event_name = market.get("question") or market.get("slug") or "Unknown Event"
             condition_id = market.get("condition_id") or ""
+
+            # 检查是否已经在处理中
+            existing_trade = state_manager.get_trade(condition_id)
+            if existing_trade and existing_trade.phase not in (TradePhase.COMPLETED.value, TradePhase.FAILED.value):
+                # 跳过已在处理的交易
+                if not args.quiet:
+                    print(f"[跳过] {event_name}: 已在处理中 (phase={existing_trade.phase})")
+                skip_count += 1
+                continue
+
             clob_token_ids = market.get("clob_token_ids") or []
             start_time, end_time = _build_event_times(market)
             if not start_time or not end_time:
@@ -164,10 +228,13 @@ def main():
             now = datetime.now(timezone.utc)
             if now >= start_time:
                 skip_count += 1
+                print(f"[跳过] {event_name}: 已开始")
                 continue
             time_to_start = (start_time - now).total_seconds()
-            if time_to_start < 180:  # 硬编码最小提前量
+            min_before_start = cfg.get("dual_wallet_min_seconds_before_start", 20)
+            if time_to_start < min_before_start:
                 skip_count += 1
+                print(f"[跳过] {event_name}: 距开始 {time_to_start:.0f}s < {min_before_start}s")
                 continue
 
             new_count += 1
@@ -198,6 +265,11 @@ def main():
         if new_count > 0 or skip_count > 0:
             print(f"轮询完成: 新事件={new_count}, 跳过={skip_count}")
 
+        # 显示交易状态摘要
+        summary = state_manager.get_summary()
+        if summary["active_count"] > 0:
+            print(f"📊 活跃交易: {summary['active_count']} | 总交易: {summary['total_trades']}")
+
     if args.once:
         run_once()
     else:
@@ -207,6 +279,10 @@ def main():
                 time.sleep(int(cfg.get("dual_wallet_poll_interval_sec", 5)))
         except KeyboardInterrupt:
             print("\nStopped.")
+        finally:
+            # 停止异步轮询器
+            if not args.no_async:
+                async_poller.stop()
 
 
 if __name__ == "__main__":

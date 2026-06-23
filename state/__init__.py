@@ -9,6 +9,7 @@ Exports:
 - Oracle samples: append_oracle_price_sample, append_oracle_price_samples
 - Candidate journal: append_candidate_record
 - Structured logging: StructuredRunLog
+- Trade state: TradeStateManager, TradePhase, TradeRecord, AsyncOutcomePoller
 """
 
 from .state import (
@@ -36,6 +37,16 @@ from .state import (
 from .structured_log import (
     StructuredRunLog,
     utc_now_iso,
+)
+
+from .trade_state import (
+    TradeStateManager,
+    TradePhase,
+    TradeRecord,
+    AsyncOutcomePoller,
+    get_trade_state_manager,
+    get_async_outcome_poller,
+    init_trade_state,
 )
 
 __all__ = [
@@ -66,4 +77,12 @@ __all__ = [
     # Structured logging
     "StructuredRunLog",
     "utc_now_iso",
+    # Trade state
+    "TradeStateManager",
+    "TradePhase",
+    "TradeRecord",
+    "AsyncOutcomePoller",
+    "get_trade_state_manager",
+    "get_async_outcome_poller",
+    "init_trade_state",
 ]

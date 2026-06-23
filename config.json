@@ -36,7 +36,7 @@
     "wallet_b": {
       "by_side": {
         "UP": ["submitted", "submitted"],
-        "DOWN": ["submitted", "filled"]
+        "DOWN": ["submitted", "submitted"]
       },
       "fill_price": 0.5,
       "filled_amount_usd": 10.0

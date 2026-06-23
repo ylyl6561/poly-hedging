@@ -99,6 +99,7 @@ STATE_TRANSITIONS: dict[EventTaskState, set[EventTaskState]] = {
         EventTaskState.WAITING_CLOSE_WINDOW,  # 处理完成，等待强平窗口
         EventTaskState.FORCE_CLOSING,     # 直接进入强平
         EventTaskState.SETTLING_OUTCOME,   # 事件已结束
+        EventTaskState.SETTLED,           # 无成交直接结算
     },
     EventTaskState.WAITING_CLOSE_WINDOW: {
         EventTaskState.FORCE_CLOSING,     # 进入强平窗口

@@ -40,6 +40,7 @@ class ExecutionOutcome:
         filled_shares: float | None = None,
         filled_amount_usd: float | None = None,
         average_fill_price: float | None = None,
+        raw_status: str | None = None,
         error: str | None = None,
         note: str | None = None,
         raw: Any = None,
@@ -51,6 +52,7 @@ class ExecutionOutcome:
         self.filled_shares = filled_shares
         self.filled_amount_usd = filled_amount_usd
         self.average_fill_price = average_fill_price
+        self.raw_status = raw_status
         self.error = error
         self.note = note
         self.raw = raw

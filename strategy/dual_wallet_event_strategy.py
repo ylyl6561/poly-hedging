@@ -37,15 +37,34 @@ class DualWalletEventStrategy:
         dry_run: bool,
         config: dict[str, Any] | None = None,
         structured_log: StructuredRunLog | None = None,
+        mock_mode: bool = False,
+        mock_fill_side: str = "UP",
+        mock_fill_after_sec: float = 5.0,
     ):
         self.run_folder = run_folder
         self.dry_run = dry_run
         self.config = config or resolve_config(__file__)
         self.structured_log = structured_log
-        self.executor = DualWalletExecutor(
-            dry_run=dry_run,
-            dry_run_status_script=self.config.get("dual_wallet_dry_run_status_script", {}),
-        )
+        self.mock_mode = mock_mode
+        self.mock_fill_side = mock_fill_side
+        self.mock_fill_after_sec = mock_fill_after_sec
+
+        if mock_mode:
+            # 使用 Mock 执行器
+            from .mock_order_executor import MockOrderExecutor, MockOrderConfig
+            mock_config = MockOrderConfig(
+                fill_side=mock_fill_side,
+                fill_after_sec=mock_fill_after_sec,
+                fill_immediately=False,
+            )
+            self.executor = MockOrderExecutor(mock_config)
+            print(f"   [MOCK] 模式启动: fill_side={mock_fill_side}, fill_after={mock_fill_after_sec}s")
+        else:
+            self.executor = DualWalletExecutor(
+                dry_run=dry_run,
+                dry_run_status_script=self.config.get("dual_wallet_dry_run_status_script", {}),
+            )
+
         registry = get_account_registry()
         self.account_pool = AccountPool(registry.list_accounts())
         self.selected_accounts = self._select_two_dual_wallet_accounts()

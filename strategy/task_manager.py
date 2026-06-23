@@ -18,6 +18,22 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
+# 导入 core.config 中的运行时配置
+from core.config import (
+    DUAL_WALLET_ENTRY_UP_PRICE,
+    DUAL_WALLET_ENTRY_DOWN_PRICE,
+    DUAL_WALLET_ENTRY_AMOUNT_USD,
+    DUAL_WALLET_MIN_SECONDS_BEFORE_START,
+)
+
+# 导入交易状态管理
+from state.trade_state import (
+    TradeStateManager,
+    TradePhase,
+    TradeRecord,
+    get_trade_state_manager,
+)
+
 
 # ===== 轮询进度跟踪 =====
 
@@ -117,11 +133,11 @@ class TradeLogger:
         print(f"   [强平窗口] 到达，开始执行强平...")
 
     @classmethod
-    def force_close(cls, wallet_name: str, side: str, price: float, result: str) -> None:
+    def force_close(cls, event_name: str, wallet_name: str, side: str, amount: str, result: str) -> None:
         """强平执行。"""
         symbol = cls.UP_SYMBOL if side == "UP" else cls.DOWN_SYMBOL
         status = "✓" if result == "成功" else "✗"
-        print(f"   [强平] {wallet_name} {symbol} @ {price:.2f} {status}")
+        print(f"   [强平] {event_name} | {wallet_name} {symbol} | {amount} {status}")
 
     @classmethod
     def order_cancelled(cls, wallet_name: str, reason: str = "") -> None:
@@ -133,6 +149,11 @@ class TradeLogger:
     def waiting_result(cls, timeout: int) -> None:
         """等待结果。"""
         print(f"   [结算] 等待市场结果... (超时 {timeout}s)")
+
+    @classmethod
+    def poll_progress(cls, name: str, rounds: str, remaining: str) -> None:
+        """轮询进度。"""
+        print(f"   [轮询] {name} | 轮次: {rounds} | 剩余: {remaining}s")
 
     @classmethod
     def outcome_revealed(cls, outcome: str) -> None:
@@ -239,11 +260,11 @@ class TaskManagerConfig:
     """任务管理器配置。"""
     # 轮询间隔
     poll_interval_sec: float = 1.0
-    entry_timeout_sec: int = 100
-    force_close_window_sec: int = 60
-    fixed_sell_price: float = 0.76
+    entry_timeout_sec: int = 92  # 从 core.config.DUAL_WALLET_ENTRY_TIMEOUT_SEC 读取
+    force_close_window_sec: int = 88  # 从 core.config.DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC 读取
+    fixed_sell_price: float = 0.6  # 从 core.config.DUAL_WALLET_FIXED_SELL_PRICE 读取
     max_consecutive_losses: int = 2
-    min_seconds_before_start: int = 180  # 最小提前量检查（秒），需在事件开始前 N 秒挂单
+    min_seconds_before_start: int = 15  # 从 core.config.DUAL_WALLET_MIN_SECONDS_BEFORE_START 读取
 
     # 结算配置
     outcome_poll_timeout_sec: int = 900
@@ -260,10 +281,10 @@ class TaskManagerConfig:
     def from_config_dict(cls, config: dict) -> "TaskManagerConfig":
         """从配置字典创建。"""
         return cls(
-            poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 1.0)),
-            entry_timeout_sec=int(config.get("dual_wallet_entry_timeout_sec", 100)),
-            force_close_window_sec=int(config.get("dual_wallet_force_close_window_sec", 60)),
-            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 0.76)),
+            poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 5.0)),
+            entry_timeout_sec=int(config.get("dual_wallet_entry_timeout_sec", 92)),
+            force_close_window_sec=int(config.get("dual_wallet_force_close_window_sec", 88)),
+            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 0.6)),
             max_consecutive_losses=int(config.get("dual_wallet_max_consecutive_losses", 2)),
             min_seconds_before_start=int(config.get("dual_wallet_min_seconds_before_start", 15)),
             outcome_poll_timeout_sec=int(config.get("dual_wallet_outcome_poll_timeout_sec", 900)),
@@ -294,6 +315,7 @@ class TaskManager:
         run_folder: str,
         dry_run: bool = False,
         structured_log: Any = None,
+        state_manager: TradeStateManager | None = None,
     ):
         self.config = config
         self.executor = executor
@@ -301,6 +323,9 @@ class TaskManager:
         self.run_folder = run_folder
         self.dry_run = dry_run
         self.structured_log = structured_log
+
+        # 交易状态管理器（用于持久化和异步轮询）
+        self._state_manager = state_manager or get_trade_state_manager()
 
         # 订单执行器 V2
         self._order_exec = OrderExecutorV2(
@@ -314,7 +339,7 @@ class TaskManager:
         self._completed_tasks: list[EventTask] = []
         self._failed_tasks: list[EventTask] = []
 
-        # 轮询器存储
+        # 轮询器存储（用于同步轮询）
         self._pollers: dict[str, Poller] = {}
 
         # 损失窗口跟踪
@@ -325,11 +350,32 @@ class TaskManager:
         # 事件开始时的余额
         self._start_balances: dict[str, float | None] = {}
 
+        # 标记是否使用异步轮询
+        self._async_polling_enabled = True
+
     # ===== 任务管理 =====
 
     def add_task(self, task: EventTask) -> EventTask:
         """添加新任务。"""
         self._tasks[task.event_id] = task
+
+        # 创建交易记录
+        wallet_assignments = {}
+        for wallet in task.wallets:
+            side = task.side_by_wallet_id.get(wallet.wallet_id)
+            wallet_assignments[wallet.wallet_id] = side.value if side else ""
+
+        self._state_manager.create_trade(
+            event_id=task.event_id,
+            event_name=task.event_name,
+            condition_id=task.condition_id,
+            start_time=task.start_time.isoformat() if task.start_time else "",
+            end_time=task.end_time.isoformat() if task.end_time else "",
+            wallet_a_id=self.wallets[0].wallet_id if len(self.wallets) > 0 else "",
+            wallet_b_id=self.wallets[1].wallet_id if len(self.wallets) > 1 else "",
+            wallet_a_side=wallet_assignments.get(self.wallets[0].wallet_id, "") if len(self.wallets) > 0 else "",
+            wallet_b_side=wallet_assignments.get(self.wallets[1].wallet_id, "") if len(self.wallets) > 1 else "",
+        )
 
         # 记录开始余额
         for wallet in task.wallets:
@@ -396,19 +442,21 @@ class TaskManager:
         )
 
     def _log_wallet_account_data(self, amount_usd: float) -> None:
-        """打印账户资金日志（迁移自原有 _log_wallet_account_data）。"""
+        """打印账户资金日志。"""
+        import core.config as config_module
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         for wallet in self.wallets:
             try:
                 payload = get_wallet_usdc_balance(account=wallet.account)
-                balance = payload.get("balance_usdc") if isinstance(payload, dict) else None
-                if isinstance(payload, dict) and payload.get("success") and balance is not None:
-                    # 余额信息已在 _announce_event_start 中打印
-                    pass
+                if isinstance(payload, dict) and payload.get("success"):
+                    balance = payload.get("balance_usdc", 0)
+                    available = float(balance) if balance is not None else 0
+                    print(f"[{now_str}] 【账户资金】{wallet.wallet_name}：available_usdc={available:.4f} | next_order_amount={amount_usd:.4f}")
                 else:
                     error = payload.get("error") if isinstance(payload, dict) else "balance_unavailable"
-                    print(f"   ⚠️ {wallet.wallet_name}: 读取失败 | {error}")
+                    print(f"[{now_str}] 【账户资金】{wallet.wallet_name}：error={error}")
             except Exception as e:
-                print(f"   ⚠️ {wallet.wallet_name}: 读取失败 | {e}")
+                print(f"[{now_str}] 【账户资金】{wallet.wallet_name}：error={e}")
 
     def _ensure_wallet_capacity(self, task: EventTask, amount_usd: float) -> bool:
         """
@@ -566,6 +614,8 @@ class TaskManager:
 
     def _process_pending(self, task: EventTask) -> None:
         """处理 PENDING 状态。"""
+        print(f"   [状态] PENDING - {task.event_name}")
+
         # 规范化时间
         end_time_utc = task.end_time
         if end_time_utc.tzinfo is None:
@@ -583,73 +633,55 @@ class TaskManager:
 
         # 检查最小提前量
         if time_to_event_start > 0 and time_to_event_start < self.config.min_seconds_before_start:
-            # 跳过事件不打印详细日志，只在轮询结束时统一报告
+            print(f"   [跳过] 时间不足: 距开始 {time_to_event_start:.0f}s < {self.config.min_seconds_before_start}s")
             task.transition_to(EventTaskState.SKIPPED, f"时间不足")
             return
 
         # 事件已结束，直接进入结算
         if time_to_event_end <= 0:
+            print(f"   [结束] 事件已结束")
             task.trigger_reason = "event_already_ended"
             task.trigger_detail = f"remaining_to_end_sec={int(time_to_event_end)};event_ended_before_wait"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "事件已结束")
             return
 
-        # 事件未开始，等待（下次 tick 再检查）
-        if start_time_utc and (start_time_utc - now).total_seconds() > 0:
-            return
+        # 5m 市场：start_time == end_time，只要距结束时间足够就立即挂单
+        # 不再要求等待 start_time
+        print(f"[执行] {task.event_name}")
+        print(f"   开始: {start_time_utc.strftime('%H:%M:%S')} UTC ({time_to_event_start:.0f}s) | 结束: {end_time_utc.strftime('%H:%M:%S')} UTC")
 
-        # 事件已开始，执行前置检查
-        amount_usd = task.metadata.get("amount_usd", 10.0)
-        up_price = task.metadata.get("up_price", 0.5)
-        down_price = task.metadata.get("down_price", 0.5)
+        # 从 core.config 读取配置值
+        amount_usd = DUAL_WALLET_ENTRY_AMOUNT_USD
+        up_price = DUAL_WALLET_ENTRY_UP_PRICE
+        down_price = DUAL_WALLET_ENTRY_DOWN_PRICE
         condition_id = task.condition_id
 
-        # 使用新的终端进度风格日志
-        PollTracker.start_event(task.event_name, time_to_event_start, end_time_utc.strftime("%H:%M:%S"))
-        self._announce_event_start(task, time_to_event_start, amount_usd, up_price, down_price)
-        TradeLogger.placing_orders()
+        # 打印任务管理器启动
+        print(f"【任务管理器】启动 | 活跃任务: 1")
 
-        # 检查余额容量（跳过详细检查，只要能获取余额就继续）
-        insufficient_wallets = []
+        # 打印钱包分配
+        wallet_assignments = []
         for wallet in self.wallets:
-            try:
-                payload = get_wallet_usdc_balance(account=wallet.account)
-                balance = payload.get("balance_usdc") if isinstance(payload, dict) else None
-                if not isinstance(payload, dict) or not payload.get("success") or balance is None:
-                    insufficient_wallets.append(f"{wallet.wallet_name}:balance_unavailable")
-            except Exception:
-                insufficient_wallets.append(f"{wallet.wallet_name}:invalid_balance")
+            side = task.side_by_wallet_id.get(wallet.wallet_id)
+            side_symbol = "▲" if side == OrderSide.UP else "▼" if side == OrderSide.DOWN else "?"
+            wallet_assignments.append(f"{wallet.wallet_name}{side_symbol}")
+        print(f"   分配: {' | '.join(wallet_assignments)} | 金额: ${amount_usd:.2f} | UP: {up_price:.2f} / DOWN: {down_price:.2f}")
 
-        if insufficient_wallets:
-            TradeLogger.event_skip(f"余额检查失败: {', '.join(insufficient_wallets)}")
-            task.transition_to(EventTaskState.STOPPED, f"余额检查失败")
-            return
+        # 打印余额
+        print("   [余额] 正在获取钱包余额...")
+        self._log_wallet_account_data(amount_usd)
 
-        # 记录 structured_log
-        if self.structured_log:
-            first_wallet_is_up = task.side_by_wallet_id.get(task.wallets[0].wallet_id) == OrderSide.UP if task.wallets else False
-            self.structured_log.record_event(
-                event_name=task.event_name,
-                event_id=task.event_id,
-                phase="start",
-                payload={
-                    "condition_id": condition_id,
-                    "start_time": task.start_time.isoformat() if task.start_time else None,
-                    "end_time": task.end_time.isoformat(),
-                    "selected_accounts": self._build_selected_account_payload(),
-                    "side_assignment": self._build_side_assignment_payload(task),
-                    "random_assignment": {
-                        "first_wallet_role": task.wallets[0].role.value if task.wallets else None,
-                        "first_wallet_is_up": first_wallet_is_up,
-                    },
-                },
-            )
-
-        # 进入挂单阶段
-        task.transition_to(EventTaskState.PLACING_ENTRY, "事件已开始，前置检查完成")
+        # 进入挂单阶段，状态机会在下一 tick 调用 _process_placing_entry
+        task.metadata["amount_usd"] = amount_usd
+        task.metadata["up_price"] = up_price
+        task.metadata["down_price"] = down_price
+        task.metadata["fee_rate_bps"] = task.metadata.get("fee_rate_bps", 0)
+        task.transition_to(EventTaskState.PLACING_ENTRY, "前置检查完成，开始挂单")
 
     def _process_placing_entry(self, task: EventTask) -> None:
         """处理 PLACING_ENTRY 状态 - 挂初始买单。"""
+        print("   [挂单] 提交初始买单...")
+        
         up_price = task.metadata.get("up_price", 0.5)
         down_price = task.metadata.get("down_price", 0.5)
         amount_usd = task.metadata.get("amount_usd", 10.0)
@@ -710,6 +742,7 @@ class TaskManager:
             task.down_filled_shares = down_shares
             task.trigger_reason = "both_sides_filled"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "双边成交确认")
+            print("   [状态转移] WAITING_ENTRY → SETTLING_OUTCOME (双边成交)")
             return
 
         # 检查单边成交
@@ -718,6 +751,7 @@ class TaskManager:
             task.first_fill_wallet_id = filled_wallet_id
             task.trigger_reason = "single_side_filled"
             task.transition_to(EventTaskState.HANDLING_SINGLE, f"单边成交: {filled_wallet_id}")
+            print(f"   [状态转移] WAITING_ENTRY → HANDLING_SINGLE (单边成交: {filled_wallet_id})")
             return
 
         # 检查 deadline 是否到达
@@ -725,20 +759,22 @@ class TaskManager:
             remaining_to_end = (end_time_utc - now).total_seconds()
             if remaining_to_end <= close_window_sec:
                 task.trigger_reason = "force_close_window"
-                print(f"   [超时进入] 强平窗口")
+                print(f"   [超时进入] 强平窗口 (deadline={deadline.strftime('%H:%M:%S')}, now={now.strftime('%H:%M:%S')})")
                 task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "进入强平窗口")
             else:
                 task.trigger_reason = "entry_timeout"
-                print(f"   [超时] 等待成交超时，进入结算")
+                print(f"   [超时] 等待成交超时，进入结算 (deadline={deadline.strftime('%H:%M:%S')}, now={now.strftime('%H:%M:%S')})")
                 task.transition_to(EventTaskState.SETTLING_OUTCOME, "等待超时")
+            print(f"   [状态转移] WAITING_ENTRY → SETTLING_OUTCOME/WAITING_CLOSE_WINDOW (超时)")
             return
 
         # 检查是否进入强平窗口
         remaining_to_end = (end_time_utc - now).total_seconds()
         if remaining_to_end <= close_window_sec:
             task.trigger_reason = "force_close_window"
-            print(f"   [进入] 强平窗口")
+            print(f"   [进入] 强平窗口 (remaining={remaining_to_end:.0f}s <= {close_window_sec}s)")
             task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "进入强平窗口")
+            print(f"   [状态转移] WAITING_ENTRY → WAITING_CLOSE_WINDOW (强平窗口)")
             return
 
         # 每隔一段时间打印等待状态
@@ -846,7 +882,10 @@ class TaskManager:
             print("\n   [双边处理] 未成交侧先成交，取消抛售单")
             # 取消 GTC 抛售单
             if live_order and live_order.order_id:
-                cancel_result = self._order_exec.cancel_order(live_order.order_id, live_wallet)
+                cancel_result = self._order_exec.cancel_order(
+                    live_order.order_id, live_wallet,
+                    event_name=task.event_name, side=OrderSide.SELL
+                )
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
                     task.mark_order(cancel_result.snapshot)
@@ -862,7 +901,11 @@ class TaskManager:
             print("\n   [双边处理] 抛售单先成交，取消未成交侧")
             # 取消 stale 侧挂单
             if stale_order and stale_order.order_id:
-                cancel_result = self._order_exec.cancel_order(stale_order.order_id, stale_wallet)
+                stale_side = OrderSide.SELL if stale_order.operation == OperationType.SELL else stale_order.side
+                cancel_result = self._order_exec.cancel_order(
+                    stale_order.order_id, stale_wallet,
+                    event_name=task.event_name, side=stale_side
+                )
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
                     task.mark_order(cancel_result.snapshot)
@@ -902,7 +945,27 @@ class TaskManager:
         task.transition_to(EventTaskState.SETTLING_OUTCOME, "强平完成")
 
     def _process_settling_outcome(self, task: EventTask) -> None:
-        """处理 SETTLING_OUTCOME 状态 - 轮询市场结果。"""
+        """
+        处理 SETTLING_OUTCOME 状态 - 轮询市场结果。
+
+        支持两种模式：
+        1. 异步模式：使用 AsyncOutcomePoller，后台线程轮询，不阻塞主循环
+        2. 同步模式：当异步模式检测到结果时，立即处理
+        """
+        # 标记开始轮询（持久化）
+        self._state_manager.mark_outcome_polling_started(task.event_id)
+
+        # 检查异步轮询器是否已有结果
+        if self._async_polling_enabled:
+            trade_record = self._state_manager.get_trade(task.event_id)
+            if trade_record and trade_record.outcome and trade_record.outcome not in ("UNKNOWN", ""):
+                # 异步轮询已有结果，直接处理
+                task.outcome = EventOutcome.UP if trade_record.outcome == "UP" else EventOutcome.DOWN
+                print(f"   [异步结果] {task.event_name} 市场结果: {task.outcome.value}")
+                task.transition_to(EventTaskState.SETTLING_BALANCE, f"结果: {task.outcome.value}")
+                return
+
+        # 同步轮询模式（后备或禁用异步时）
         poller_id = f"{task.event_id}_outcome"
 
         if poller_id not in self._pollers:
@@ -913,7 +976,7 @@ class TaskManager:
                 on_progress=self._handle_poller_progress,
             )
             self._pollers[poller_id].start()
-            print("   [轮询] 等待市场结果...")
+            print("   [同步轮询] 等待市场结果...")
 
         poller = self._pollers[poller_id]
         result = poller.poll()
@@ -921,8 +984,12 @@ class TaskManager:
         if result.is_complete:
             task.outcome = result.value
             del self._pollers[poller_id]
-            outcome_str = "YES" if task.outcome == EventOutcome.YES else "NO" if task.outcome == EventOutcome.NO else str(task.outcome)
+            outcome_str = task.outcome.value if task.outcome else "UNKNOWN"
             print(f"   [结果] {outcome_str}")
+
+            # 更新持久化状态
+            self._state_manager.mark_outcome_polling_completed(task.event_id, outcome_str)
+
             task.transition_to(EventTaskState.SETTLING_BALANCE, f"结果: {task.outcome.value}")
 
     def _process_settling_balance(self, task: EventTask) -> None:
@@ -1128,8 +1195,10 @@ class TaskManager:
 
     def _finalize_task(self, task: EventTask) -> None:
         """完成任务的最终处理。"""
-        # 跳过的任务不打印结果、也不导出（没有实际交易）
+        # 跳过的任务打印原因
         if task.state == EventTaskState.SKIPPED:
+            print(f"   [跳过] {task.event_name} - {task.trigger_reason or '时间不足'}")
+            self._completed_skipped_count += 1
             return
 
         # 计算 PnL
@@ -1206,14 +1275,20 @@ class TaskManager:
         snapshot: Any,
     ) -> None:
         """打印挂单日志。"""
+        import core.config as config_module
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         side_text = side.value if side else "UNKNOWN"
-        price = snapshot.price if snapshot and snapshot.price else 0.0
-        error_text = snapshot.error if snapshot else ""
-
-        if error_text:
-            TradeLogger.order_failed(wallet.wallet_name, error_text)
-        else:
-            TradeLogger.order_submitted(wallet.wallet_name, side_text, float(price))
+        if snapshot and hasattr(snapshot, "price"):
+            price = snapshot.price
+            shares = amount_usd / price if price > 0 else 0
+            status = snapshot.status if hasattr(snapshot, "status") else "unknown"
+            token_id = snapshot.clob_token_id if hasattr(snapshot, "clob_token_id") else "N/A"
+            order_id = snapshot.order_id if hasattr(snapshot, "order_id") else "N/A"
+            error_text = snapshot.error if hasattr(snapshot, "error") and snapshot.error else ""
+            if error_text:
+                print(f"[{now_str}] 【挂单】{wallet.wallet_name}({wallet.wallet_id}) | side={side_text} | amount_usd={amount_usd:.4f} | price={price:.4f} | shares={shares:.4f} | status={status} | error={error_text}")
+            else:
+                print(f"[{now_str}] 【挂单】{wallet.wallet_name}({wallet.wallet_id}) | side={side_text} | amount_usd={amount_usd:.4f} | price={price:.4f} | shares={shares:.4f} | status={status} | token_id={token_id} | order_id={order_id}")
 
     def _export_result(self, task: EventTask) -> None:
         """导出结果。"""

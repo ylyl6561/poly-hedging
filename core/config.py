@@ -65,13 +65,16 @@ CONFIG_SCHEMA = {
     "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
     "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
     "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "每轮最多检查的市场数量"},
-    "dual_wallet_min_seconds_before_start": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
+    "dual_wallet_min_seconds_before_start": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
     "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "是否将候选决策写入 JSONL 日志，便于回放分析"},
     "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "候选决策日志文件路径"},
     "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "结构化的 Polymarket 多账户配置"},
     "execution_route": {"default": None, "env": "SIMMER_FASTLOOP_EXECUTION_ROUTE", "type": str, "help": "实盘执行通道：direct_clob 或 simmer_wallet"},
     "order_type": {"default": "GTC", "env": "SIMMER_FASTLOOP_ORDER_TYPE", "type": str, "help": "订单类型：GTC、FAK、FOK、GTD（默认 GTC）"},
     "dual_wallet_dry_run_status_script": {"default": {}, "env": "SIMMER_FASTLOOP_DUAL_WALLET_DRY_RUN_STATUS_SCRIPT", "type": dict, "help": "dry_run 下按账号/side脚本化返回订单状态，用于无真实下单验证 Step 6/7/8"},
+    "dual_wallet_mock_mode": {"default": False, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_MODE", "type": bool, "help": "Mock 模式：模拟整个流程但不真实下单"},
+    "dual_wallet_mock_fill_side": {"default": "UP", "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_FILL_SIDE", "type": str, "help": "Mock 模式下模拟哪侧先成交：UP 或 DOWN"},
+    "dual_wallet_mock_fill_after_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_FILL_AFTER_SEC", "type": int, "help": "Mock 模式下模拟成交延迟（秒）"},
 }
 
 WALLET_LINK_RETRIES = int(os.environ.get("SIMMER_WALLET_LINK_RETRIES", "4"))
@@ -172,9 +175,10 @@ def resolve_config(skill_file):
     global POLYMARKET_ACCOUNTS
     global DUAL_WALLET_ENTRY_TIMEOUT_SEC, DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC
     global DUAL_WALLET_FIXED_SELL_PRICE, DUAL_WALLET_ENTRY_AMOUNT_USD
+    global DUAL_WALLET_ENTRY_UP_PRICE, DUAL_WALLET_ENTRY_DOWN_PRICE
     global DUAL_WALLET_MAX_CONSECUTIVE_LOSSES, DUAL_WALLET_POLL_INTERVAL_SEC
-    global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START, CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE
-    global DUAL_WALLET_DRY_RUN_STATUS_SCRIPT
+    global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START
+    global CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE, DUAL_WALLET_DRY_RUN_STATUS_SCRIPT
 
     STRATEGY_MODE = cfg.get("strategy_mode", "dual_wallet_event").lower()
     route = cfg.get("execution_route")
@@ -196,7 +200,7 @@ def resolve_config(skill_file):
     DUAL_WALLET_MAX_CONSECUTIVE_LOSSES = cfg.get("dual_wallet_max_consecutive_losses", 2)
     DUAL_WALLET_POLL_INTERVAL_SEC = cfg.get("dual_wallet_poll_interval_sec", 5)
     DUAL_WALLET_EVENT_QUERY_LIMIT = cfg.get("dual_wallet_event_query_limit", 20)
-    DUAL_WALLET_MIN_SECONDS_BEFORE_START = cfg.get("dual_wallet_min_seconds_before_start", 15)
+    DUAL_WALLET_MIN_SECONDS_BEFORE_START = cfg.get("dual_wallet_min_seconds_before_start", 60)
     DUAL_WALLET_DRY_RUN_STATUS_SCRIPT = cfg.get("dual_wallet_dry_run_status_script", {})
     CANDIDATE_JOURNAL = cfg.get("candidate_journal", False)
     CANDIDATE_JOURNAL_FILE = cfg.get("candidate_journal_file", "candidate_journal.jsonl")

@@ -762,10 +762,12 @@ class TaskManager:
                 print(f"   [超时进入] 强平窗口 (deadline={deadline.strftime('%H:%M:%S')}, now={now.strftime('%H:%M:%S')})")
                 task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "进入强平窗口")
             else:
+                # entry_timeout 触发，双边都没成交，取消双边挂单
                 task.trigger_reason = "entry_timeout"
-                print(f"   [超时] 等待成交超时，进入结算 (deadline={deadline.strftime('%H:%M:%S')}, now={now.strftime('%H:%M:%S')})")
+                self._cancel_both_entry_orders(task)
+                print(f"   [超时] 等待成交超时，取消双边挂单，进入结算 (deadline={deadline.strftime('%H:%M:%S')}, now={now.strftime('%H:%M:%S')})")
                 task.transition_to(EventTaskState.SETTLING_OUTCOME, "等待超时")
-            print(f"   [状态转移] WAITING_ENTRY → SETTLING_OUTCOME/WAITING_CLOSE_WINDOW (超时)")
+                print(f"   [状态转移] WAITING_ENTRY → SETTLING_OUTCOME (entry_timeout)")
             return
 
         # 检查是否进入强平窗口
@@ -884,7 +886,7 @@ class TaskManager:
             if live_order and live_order.order_id:
                 cancel_result = self._order_exec.cancel_order(
                     live_order.order_id, live_wallet,
-                    event_name=task.event_name, side=OrderSide.SELL
+                    event_name=task.event_name, side=None
                 )
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
@@ -901,7 +903,7 @@ class TaskManager:
             print("\n   [双边处理] 抛售单先成交，取消未成交侧")
             # 取消 stale 侧挂单
             if stale_order and stale_order.order_id:
-                stale_side = OrderSide.SELL if stale_order.operation == OperationType.SELL else stale_order.side
+                stale_side = None if stale_order.operation == OperationType.SELL else stale_order.side
                 cancel_result = self._order_exec.cancel_order(
                     stale_order.order_id, stale_wallet,
                     event_name=task.event_name, side=stale_side
@@ -1029,6 +1031,45 @@ class TaskManager:
 
     # ===== 核心业务逻辑 =====
 
+    def _cancel_both_entry_orders(self, task: EventTask) -> None:
+        """
+        取消双边的 entry 挂单（用于 entry_timeout 场景）。
+
+        逻辑：
+        1. 获取双边钱包的当前挂单
+        2. 只取消 PLACE 类型的挂单（entry 挂单）
+        3. 跳过已成交或已是终态的订单
+        """
+        for wallet in task.wallets:
+            order = task.get_order(wallet.wallet_id)
+            if not order or not order.order_id:
+                continue
+
+            # 只取消 PLACE 类型的 entry 挂单
+            if order.operation != OperationType.PLACE:
+                continue
+
+            # 跳过已成交或终态订单
+            if order.status in {OrderStatus.FILLED.value, OrderStatus.CANCELLED.value}:
+                continue
+
+            cancel_result = self._order_exec.cancel_order(
+                order_id=order.order_id,
+                wallet=wallet,
+                event_name=task.event_name,
+                side=order.side,
+                amount_usd=order.amount_usd,
+            )
+
+            cancel_snapshot = cancel_result.snapshot
+            if cancel_snapshot:
+                cancel_snapshot.status = OrderStatus.CANCELLED.value if cancel_result.success else OrderStatus.FAILED.value
+                task.mark_order(cancel_snapshot)
+
+            status_str = "成功" if cancel_result.success else "失败"
+            print(f"      [{wallet.wallet_name}] 取消 entry 挂单: {status_str}")
+            TradeLogger.order_cancelled(wallet.wallet_name, "entry_timeout 取消")
+
     def _refresh_order_statuses(self, task: EventTask) -> None:
         """刷新订单状态。"""
         for wallet in task.wallets:
@@ -1104,7 +1145,13 @@ class TaskManager:
                 for snap in task.get_order_history(wallet.wallet_id)
             )
 
+        # 检查是否有任何钱包的抛售单已成交
+        # 如果有，则只撤单不执行 FAK 强平（因为抛售单已成交相当于已对冲）
+        any_sell_filled = any(sell_order_filled_by_wallet.get(w.id, False) for w in task.wallets)
+
         print(f"\n⚡ 开始执行强平: {task.event_name} | 窗口={close_window_sec}s | 触发={task.trigger_reason}")
+        if any_sell_filled:
+            print(f"   ℹ️ 检测到抛售单已成交，只撤单不执行 FAK 强平")
 
         fee_rate_bps = task.metadata.get("fee_rate_bps", 0)
 
@@ -1112,14 +1159,30 @@ class TaskManager:
             order = task.get_order(wallet.wallet_id)
             wallet_name = wallet.wallet_name
 
-            # 如果 GTC 抛售单已被市场吃掉，跳过强平
+            # 获取 entry 成交份额（从历史订单中查找）
+            entry_filled_shares = 0.0
+            if is_single_side_pending and wallet.wallet_id in entry_filled_by_wallet:
+                entry_filled_shares = entry_filled_by_wallet[wallet.wallet_id]
+            elif order:
+                entry_filled_shares = float(order.filled_shares or order.shares or 0.0)
+
+            # 判断当前挂单类型
+            is_sell_order = order and order.operation == OperationType.SELL
+            is_entry_order = order and order.operation == OperationType.PLACE
+
+            # 检查是否有未成交的挂单（部分成交后还有剩余份额）
+            order_filled = float(order.filled_shares or 0) if order else 0
+            order_total = float(order.shares or 0) if order else 0
+            has_unfilled = order_total > order_filled
+
+            # 如果 GTC 抛售单已被市场吃掉，跳过
             if is_single_side_pending and sell_order_filled_by_wallet.get(wallet.wallet_id, False):
                 print(f"   ⏭️ {wallet_name}: 抛售单已成交，跳过")
                 continue
 
-            # 尝试撤单
+            # 尝试撤单（只有存在未成交份额时才撤单）
             cancel_already_terminal = False
-            if order and order.order_id and order.status == OrderStatus.SUBMITTED.value:
+            if order and order.order_id and order.status == OrderStatus.SUBMITTED.value and has_unfilled:
                 cancel_outcome = self._order_exec.cancel_order(
                     order_id=order.order_id,
                     wallet=wallet,
@@ -1156,26 +1219,51 @@ class TaskManager:
                         print(f"   ⚠️ {wallet_name}: 撤单失败，订单仍在簿上")
                         cancel_already_terminal = True
 
+            # 如果撤单的是 SELL 抛售单，检查是否需要 FAK 平掉 entry 仓位
+            if is_sell_order and cancel_already_terminal:
+                # 抛售单已撤，检查 entry 仓位是否需要 FAK
+                # 条件：有 entry 仓位 且 没有抛售单已成交
+                if entry_filled_shares > 0 and not any_sell_filled:
+                    side = OrderSide.UP if task.side_by_wallet_id.get(wallet.wallet_id) in (None, OrderSide.UP) else OrderSide.DOWN
+                    close_result = self._order_exec.execute_force_close(
+                        wallet=wallet,
+                        event_name=task.event_name,
+                        side=side,
+                        shares=entry_filled_shares,
+                        clob_token_ids=task.clob_token_ids,
+                        fee_rate_bps=fee_rate_bps,
+                        condition_id=task.condition_id,
+                    )
+                    if close_result.snapshot:
+                        close_result.snapshot.status = OrderStatus.FILLED.value if close_result.outcome.success else OrderStatus.FAILED.value
+                        task.mark_order(close_result.snapshot)
+                    close_amount = entry_filled_shares * self.config.fixed_sell_price
+                    result_str = "成功" if close_result.outcome.success else "失败"
+                    TradeLogger.force_close(task.event_name, wallet_name, side.value, f"${close_amount:.2f}", result_str)
+                else:
+                    print(f"   ⏭️ {wallet_name}: 抛售单已撤，entry 无仓位或已对冲，跳过 FAK")
+                continue
+
             if cancel_already_terminal:
                 continue
 
-            # 决定 FAK 平仓份额
-            if is_single_side_pending and wallet.wallet_id in entry_filled_by_wallet:
-                filled_shares = entry_filled_by_wallet[wallet.wallet_id]
-            else:
-                filled_shares = float(order.filled_shares or order.shares or 0.0) if order else 0.0
+            # 执行 FAK 强平的条件：
+            # 1. 当前挂单是 PLACE（entry）
+            # 2. 有成交份额
+            # 3. 没有 SELL 抛售单已成交（any_sell_filled）
+            should_fak = is_entry_order and entry_filled_shares > 0 and not any_sell_filled
 
-            if filled_shares <= 0:
-                print(f"   ⏭️ {wallet_name}: 成交份额=0，跳过")
+            if not should_fak:
+                reason = "抛售单已成交" if any_sell_filled else ("成交份额=0" if entry_filled_shares <= 0 else "当前挂单是 SELL 抛售单")
+                print(f"   ⏭️ {wallet_name}: {reason}，只撤单不 FAK 强平")
                 continue
 
-            # 执行 FAK 强平
             side = order.side if order else OrderSide.UP
             close_result = self._order_exec.execute_force_close(
                 wallet=wallet,
                 event_name=task.event_name,
                 side=side,
-                shares=filled_shares,
+                shares=entry_filled_shares,
                 clob_token_ids=task.clob_token_ids,
                 fee_rate_bps=fee_rate_bps,
                 condition_id=task.condition_id,
@@ -1187,7 +1275,7 @@ class TaskManager:
                 task.mark_order(close_result.snapshot)
 
             # 打印日志
-            close_amount = filled_shares * self.config.fixed_sell_price
+            close_amount = entry_filled_shares * self.config.fixed_sell_price
             result_str = "成功" if close_result.outcome.success else "失败"
             TradeLogger.force_close(task.event_name, wallet_name, side.value, f"${close_amount:.2f}", result_str)
 

@@ -51,8 +51,8 @@ load_env_file(__file__)
 
 CONFIG_SCHEMA = {
     "strategy_mode": {"default": "dual_wallet_event", "env": "SIMMER_FASTLOOP_STRATEGY_MODE", "type": str, "help": "策略模式：dual_wallet_event"},
-    "dual_wallet_entry_timeout_sec": {"default": 92, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
-    "dual_wallet_force_close_window_sec": {"default": 88, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
+    "dual_wallet_entry_timeout_sec": {"default": 120, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
+    "dual_wallet_force_close_window_sec": {"default": 50, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
     "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
     "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
@@ -65,7 +65,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
     "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
     "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "每轮最多检查的市场数量"},
-    "dual_wallet_min_seconds_before_start": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
+    "dual_wallet_min_seconds_before_start": {"default": 90, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
     "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "是否将候选决策写入 JSONL 日志，便于回放分析"},
     "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "候选决策日志文件路径"},
     "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "结构化的 Polymarket 多账户配置"},

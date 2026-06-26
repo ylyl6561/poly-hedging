@@ -259,7 +259,7 @@ OrderExecutorProtocol = Any  # 避免循环导入
 class TaskManagerConfig:
     """任务管理器配置。"""
     # 轮询间隔
-    poll_interval_sec: float = 1.0
+    poll_interval_sec: float = 0.6
     entry_timeout_sec: int = 92  # 从 core.config.DUAL_WALLET_ENTRY_TIMEOUT_SEC 读取
     force_close_window_sec: int = 88  # 从 core.config.DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC 读取
     fixed_sell_price: float = 0.6  # 从 core.config.DUAL_WALLET_FIXED_SELL_PRICE 读取
@@ -281,10 +281,10 @@ class TaskManagerConfig:
     def from_config_dict(cls, config: dict) -> "TaskManagerConfig":
         """从配置字典创建。"""
         return cls(
-            poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 5.0)),
+            poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 1)),
             entry_timeout_sec=int(config.get("dual_wallet_entry_timeout_sec", 92)),
             force_close_window_sec=int(config.get("dual_wallet_force_close_window_sec", 88)),
-            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 0.6)),
+            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 1)),
             max_consecutive_losses=int(config.get("dual_wallet_max_consecutive_losses", 2)),
             min_seconds_before_start=int(config.get("dual_wallet_min_seconds_before_start", 15)),
             outcome_poll_timeout_sec=int(config.get("dual_wallet_outcome_poll_timeout_sec", 900)),
@@ -879,10 +879,13 @@ class TaskManager:
         stale_order = task.get_order(stale_wallet.wallet_id)
         live_order = task.get_order(live_wallet.wallet_id)
 
-        # 检查 1: stale 侧原始挂单是否已成交
-        if stale_order and stale_order.status == OrderStatus.FILLED.value:
-            print("\n   [双边处理] 未成交侧先成交，取消抛售单")
-            # 取消 GTC 抛售单
+        # 同时检查两边状态
+        stale_filled = stale_order and stale_order.status == OrderStatus.FILLED.value
+        live_filled = live_order and live_order.status == OrderStatus.FILLED.value
+
+        if stale_filled and not live_filled:
+            # 情况1：stale 侧成交，live 侧未成交 → 取消 live 的抛售单
+            print("\n   [双边处理] stale侧挂单成交，取消抛售单")
             if live_order and live_order.order_id:
                 cancel_result = self._order_exec.cancel_order(
                     live_order.order_id, live_wallet,
@@ -898,10 +901,9 @@ class TaskManager:
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "stale侧挂单先成交")
             return
 
-        # 检查 2: GTC 抛售单是否成交
-        if live_order and live_order.status == OrderStatus.FILLED.value:
-            print("\n   [双边处理] 抛售单先成交，取消未成交侧")
-            # 取消 stale 侧挂单
+        elif live_filled and not stale_filled:
+            # 情况2：live 侧（抛售单）成交，stale 侧未成交 → 取消 stale 的挂单
+            print("\n   [双边处理] 抛售单成交，取消stale侧挂单")
             if stale_order and stale_order.order_id:
                 stale_side = None if stale_order.operation == OperationType.SELL else stale_order.side
                 cancel_result = self._order_exec.cancel_order(
@@ -911,11 +913,51 @@ class TaskManager:
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
                     task.mark_order(cancel_result.snapshot)
-                TradeLogger.order_cancelled(stale_wallet.wallet_name, "未成交侧")
+                TradeLogger.order_cancelled(stale_wallet.wallet_name, "stale侧挂单")
             task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
             task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
             task.trigger_reason = "sell_order_filled_first"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "抛售单先成交")
+            return
+
+        elif stale_filled and live_filled:
+            # 情况3：两者都成交 → live侧交易完毕，stale侧有仓位需要强平
+            print("\n   [双边处理] 两边都成交，对stale侧执行强平")
+            # stale 侧有仓位，需要 FAK 强平
+            if stale_order:
+                stale_side = OrderSide.UP if stale_order.side == OrderSide.UP else OrderSide.DOWN
+                # 获取 stale 侧成交份额
+                stale_filled_shares = float(stale_order.filled_shares or 0)
+                if stale_filled_shares > 0:
+                    close_result = self._order_exec.execute_force_close(
+                        wallet=stale_wallet,
+                        event_name=task.event_name,
+                        side=stale_side,
+                        shares=stale_filled_shares,
+                        clob_token_ids=task.clob_token_ids,
+                        fee_rate_bps=task.metadata.get("fee_rate_bps", 0),
+                        condition_id=task.condition_id,
+                    )
+                    if close_result.snapshot:
+                        close_result.snapshot.status = OrderStatus.FILLED.value if close_result.outcome.success else OrderStatus.FAILED.value
+                        task.mark_order(close_result.snapshot)
+                    close_amount = stale_filled_shares * self.config.fixed_sell_price
+                    result_str = "成功" if close_result.outcome.success else "失败"
+                    TradeLogger.force_close(task.event_name, stale_wallet.wallet_name, stale_side.value, f"${close_amount:.2f}", result_str)
+            # 取消 live 侧剩余的抛售单（如果有），但是一般是没有的先保留逻辑！TODO 确认
+            # if live_order and live_order.order_id:
+            #     cancel_result = self._order_exec.cancel_order(
+            #         live_order.order_id, live_wallet,
+            #         event_name=task.event_name, side=None
+            #     )
+            #     if cancel_result.snapshot:
+            #         cancel_result.snapshot.status = OrderStatus.CANCELLED.value
+            #         task.mark_order(cancel_result.snapshot)
+            #     TradeLogger.order_cancelled(live_wallet.wallet_name, "剩余抛售单")
+            task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
+            task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
+            task.trigger_reason = "both_sides_filled"
+            task.transition_to(EventTaskState.SETTLING_OUTCOME, "双边都成交，stale侧强平")
             return
 
         # 检查 3: 强平窗口到达

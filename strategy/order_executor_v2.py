@@ -26,6 +26,7 @@ from strategy.dual_wallet_models import (
     OperationType,
     WalletIdentity,
 )
+from strategy.event_task import coalesce_filled_shares
 
 
 class ExecutionOutcome:
@@ -599,9 +600,10 @@ class OrderExecutorV2:
         """判断订单是否已成交。"""
         if not snapshot:
             return False
-        return snapshot.status == OrderStatus.FILLED.value and bool(
-            snapshot.filled_shares or snapshot.shares
-        )
+        if snapshot.status != OrderStatus.FILLED.value:
+            return False
+        # 区分 "未填" (None) 和 "成交为 0"：必须 > 0 才算真成交
+        return coalesce_filled_shares(snapshot.filled_shares, snapshot.shares) > 0
 
     @staticmethod
     def is_order_submitted(snapshot: OrderSnapshot | None) -> bool:
@@ -615,7 +617,7 @@ class OrderExecutorV2:
         """获取成交份额。"""
         if not snapshot:
             return 0.0
-        return float(snapshot.filled_shares or snapshot.shares or 0.0)
+        return coalesce_filled_shares(snapshot.filled_shares, snapshot.shares)
 
     def format_operation_log(
         self,

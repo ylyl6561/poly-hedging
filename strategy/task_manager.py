@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -226,11 +227,11 @@ class TradeLogger:
         """状态转换日志。"""
         print(f"   {from_state} → {to_state}")
 
-from api import get_wallet_usdc_balance
+from api import fetch_token_balance, get_wallet_usdc_balance
 from notifications.feishu_tools import send_feishu
 from state.reconcile_export import export_dual_wallet_event_to_excel
 
-from strategy.event_task import EventTask
+from strategy.event_task import EventTask, coalesce_filled_shares
 from strategy.event_task_state import (
     EventTaskState,
     is_active_state,
@@ -811,6 +812,116 @@ class TaskManager:
         else:
             task._last_wait_log = now.timestamp()
 
+    @staticmethod
+    def _parse_clob_balance_error(error_text: str) -> dict[str, float | str | None]:
+        """从 CLOB 错误消息中提取 balance / order amount / token_id 等关键字段。
+
+        形如:
+          "PolyApiException[status_code=400, error_message={'error':
+            'not enough balance / allowance: the balance is not enough ->
+            balance: 0, order amount: 5000000'}]"
+        """
+        if not error_text:
+            return {}
+        out: dict[str, float | str | None] = {}
+
+        def _num(pattern: str) -> float | None:
+            m = re.search(pattern, error_text)
+            if not m:
+                return None
+            try:
+                return float(m.group(1))
+            except (ValueError, IndexError):
+                return None
+
+        balance = _num(r"balance:\s*([0-9]+(?:\.[0-9]+)?)")
+        order_amount = _num(r"order amount:\s*([0-9]+(?:\.[0-9]+)?)")
+        if balance is not None:
+            out["balance_raw"] = balance
+            out["balance_shares"] = balance / 1_000_000.0
+        if order_amount is not None:
+            out["order_amount_raw"] = order_amount
+            out["order_amount_shares"] = order_amount / 1_000_000.0
+
+        m = re.search(r"status_code\s*[=:]\s*([0-9]+)", error_text)
+        if m:
+            out["status_code"] = int(m.group(1))
+        return out
+
+    def _diagnose_sell_balance_mismatch(
+        self,
+        task: "EventTask",
+        wallet: "WalletIdentity",
+        side: "OrderSide | None",
+        shares_attempted: float,
+        price_attempted: float,
+        error_text: str,
+    ) -> None:
+        """抛售单挂单失败时打印本地 vs CLOB 两侧的对账信息，定位 root cause。"""
+        side_str = side.value if side else "?"
+        side_token_index = side.token_index if side else 0
+        task_token_id = None
+        if task.clob_token_ids and 0 <= side_token_index < len(task.clob_token_ids):
+            task_token_id = task.clob_token_ids[side_token_index]
+
+        parsed = self._parse_clob_balance_error(error_text)
+
+        print(
+            f"   [抛售失败·诊断] [{wallet.wallet_name}] {side_str} 侧 sell attempt failed\n"
+            f"      task.clob_token_ids[{side_token_index}] = {task_token_id}\n"
+            f"      task.clob_token_ids = {task.clob_token_ids}\n"
+            f"      shares_attempted = {shares_attempted:.4f}\n"
+            f"      price_attempted = {price_attempted:.4f}\n"
+            f"      raw_shares_attempted (CLOB decimals) = {int(round(shares_attempted * 1_000_000))}"
+        )
+        if parsed:
+            balance_shares = parsed.get("balance_shares")
+            order_amount_shares = parsed.get("order_amount_shares")
+            balance_raw = parsed.get("balance_raw")
+            order_amount_raw = parsed.get("order_amount_raw")
+            status_code = parsed.get("status_code")
+            print(
+                f"      CLOB raw error: status_code={status_code} | "
+                f"balance_raw={balance_raw} ({balance_shares} shares) | "
+                f"order_amount_raw={order_amount_raw} ({order_amount_shares} shares)"
+            )
+            if isinstance(balance_shares, (int, float)) and shares_attempted > 0:
+                if balance_shares == 0:
+                    print(
+                        "      >>> DIAGNOSIS: CLOB reports wallet balance=0 for this token.\n"
+                        "          Possible causes:\n"
+                        "          (a) entry 买单根本没 fill（task 本地 filled_shares 是误报）；\n"
+                        "          (b) token_id 错位：entry 买的是 token A，sell 想卖 token B；\n"
+                        "          (c) entry 那笔 fill 还没 settle 到 wallet（链上延迟）。"
+                    )
+                elif balance_shares + 1e-9 < shares_attempted:
+                    print(
+                        f"      >>> DIAGNOSIS: CLOB balance ({balance_shares:.4f}) < sell attempt ({shares_attempted:.4f}).\n"
+                        f"          可能部分 fill 后被吃掉/转出；task 本地状态与 CLOB 出现漂移。"
+                    )
+
+        history = task.get_order_history(wallet.wallet_id) if hasattr(task, "get_order_history") else []
+        if history:
+            print(f"      本地 entry/sell 订单历史 (最近 5 笔):")
+            for snap in history[-5:]:
+                token_id_short = (snap.token_id[:14] + "...") if snap.token_id and len(snap.token_id) > 14 else snap.token_id
+                op = snap.operation.value if hasattr(snap.operation, "value") else str(snap.operation)
+                print(
+                    f"         - op={op} | side={snap.side.value if snap.side else '?'} | "
+                    f"price={snap.price} | shares={snap.shares} | "
+                    f"filled_shares={snap.filled_shares} | status={snap.status} | "
+                    f"token_id={token_id_short} | order_id={snap.order_id}"
+                )
+            if not any(s.filled_shares and s.filled_shares > 0 for s in history):
+                print(
+                    "      >>> DIAGNOSIS: 本地所有订单 filled_shares 都是 0/None ——\n"
+                    "          task 认为成交了，但实际没有任何一笔单 fill 报告。"
+                )
+        else:
+            print(
+                "      >>> DIAGNOSIS: 本地订单历史为空 —— 这个钱包根本没挂过任何单？"
+            )
+
     def _process_handling_single(self, task: EventTask) -> None:
         """
         处理 HANDLING_SINGLE 状态 - 单边成交处理（挂抛售单，不撤单）。
@@ -834,7 +945,10 @@ class TaskManager:
 
         # 获取 live 侧的成交信息
         live_order = task.get_order(live_wallet.wallet_id)
-        live_filled_shares = float(live_order.filled_shares or live_order.shares or 0.0) if live_order else 0.0
+        live_filled_shares = coalesce_filled_shares(
+            live_order.filled_shares if live_order else None,
+            live_order.shares if live_order else None,
+        )
         live_filled_amount = float(live_order.filled_amount_usd or 0.0) if live_order else 0.0
 
         fee_rate_bps = task.metadata.get("fee_rate_bps", 0)
@@ -842,46 +956,142 @@ class TaskManager:
         # 挂 GTC 抛售单，不撤 stale 侧挂单
         sell_shares = live_filled_shares if live_filled_shares > 0 else (live_filled_amount / self.config.fixed_sell_price)
 
-        sell_result = self._order_exec.place_gtc_sell_order(
-            wallet=live_wallet,
-            event_name=task.event_name,
-            side=live_side,
-            shares=sell_shares,
-            price=self.config.fixed_sell_price,
-            clob_token_ids=task.clob_token_ids,
-            fee_rate_bps=fee_rate_bps,
-            condition_id=task.condition_id,
-        )
+        # 【修复说明】
+        # 问题：entry 端在 Polymarket V2 CLOB 拿到 ``status="matched"`` 就被标 FILLED，
+        #       但 token 还在 on-chain settle 中（issue #54 / #328：5m BTC 上 GTC BUY
+        #       ~50% 不会真正入账）；挂 sell 时被 CLOB 打回 ``balance: 0``。
+        # 原因：缺少 sell 前的 on-chain token balance 对账。
+        # 修复：在挂 GTC sell 前调用 ``fetch_token_balance`` 读 CLOB CONDITIONAL 余额；
+        #       余额 < 期望份额时跳过 sell，直接走 WAITING_CLOSE_WINDOW，由强平窗口 FAK
+        #       兜底；状态机不引入新分支，stale 侧挂单与 TradeLogger 契约保持不变。
+        live_token_id = None
+        if task.clob_token_ids and live_side is not None and 0 <= live_side.token_index < len(task.clob_token_ids):
+            live_token_id = task.clob_token_ids[live_side.token_index]
 
-        # 记录抛售单快照
-        if sell_result.snapshot:
-            sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
-            task.mark_order(sell_result.snapshot)
-
-        # 检查挂单是否成功
-        sell_success = sell_result.outcome.success
-        sell_order_id = sell_result.outcome.order_id if sell_success else None
-        sell_err = sell_result.outcome.error or "未知错误"
-
-        # 输出详细日志：包含钱包、方向、份额、价格、订单ID、是否成功
-        side_str = live_side.value if live_side else "?"
-        if sell_success:
-            print(
-                f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
-                f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
-                f"(order_id={sell_order_id})"
+        sell_skipped_for_balance = False
+        live_balance_shares: float | None = None
+        if live_token_id:
+            balance_resp = fetch_token_balance(
+                asset_id=live_token_id,
+                account=live_wallet.account,
+                mock=bool(getattr(self.config, "dry_run", False)),
             )
-            TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-            TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares)
+            live_balance_shares = balance_resp.get("balance_shares")
+            if balance_resp.get("success") and live_balance_shares is not None and live_balance_shares + 1e-9 < sell_shares:
+                sell_skipped_for_balance = True
+                skip_msg = (
+                    f"   [单边] [{live_wallet.wallet_name}] {live_side.value if live_side else '?'} 侧 GTC 抛售单跳过: "
+                    f"CLOB token 余额 {live_balance_shares:.4f} 股 < 期望 {sell_shares:.4f} 股，"
+                    f"判定为 ``status=matched`` 但 on-chain settle 未完成 / entry 误报。强平窗口将直接对该侧执行 FAK 强平。"
+                )
+                print(skip_msg)
+                TradeLogger.single_filled(live_wallet.wallet_name, live_side.value if live_side else "?", live_filled_shares)
+                TradeLogger.sell_order_failed(
+                    live_wallet.wallet_name,
+                    live_side.value if live_side else "?",
+                    self.config.fixed_sell_price,
+                    sell_shares,
+                    f"on_chain_balance_mismatch:balance={live_balance_shares:.4f}",
+                )
+
+        if sell_skipped_for_balance:
+            # 把这次"跳过"留痕为一条本地 FAILED 快照，但不发起任何 CLOB 调用；
+            # 下游统计 / 通知与原有抛售失败路径走同一通道。
+            #
+            # 关键：不能直接 ``task.mark_order(skip_snapshot)``，因为 ``mark_order`` 会把
+            # live wallet 的 current_order 从原 entry PLACE 快照**覆盖**为 FAILED SELL 快照，
+            # 导致后续 ``_execute_force_close`` 看不到原始 PLACE 单、走错分支（既不会撤
+            # entry，也不会 FAK 强平 UP 仓位）。正确做法：只追加到 order_history，保留
+            # current_order 不变，让强平窗口正常撤 entry + FAK UP 仓位。
+            skip_snapshot = OrderSnapshot(
+                wallet=live_wallet,
+                event_name=task.event_name,
+                side=live_side,
+                amount_usd=float(sell_shares * self.config.fixed_sell_price),
+                operation=OperationType.SELL,
+                order_id=None,
+                token_id=live_token_id,
+                condition_id=task.condition_id,
+                price=self.config.fixed_sell_price,
+                shares=float(sell_shares),
+                status=OrderStatus.FAILED.value,
+                close_price=self.config.fixed_sell_price,
+                filled_amount_usd=0.0,
+                filled_shares=0.0,
+                error=f"on_chain_balance_mismatch:balance={live_balance_shares}",
+            )
+            # 仅追加到 history，不覆盖 current_order
+            history_list = task.order_snapshots.setdefault(live_wallet.wallet_id, [])
+            history_list.append(skip_snapshot)
+            # 诊断：复用已有 helper，把余额信息塞进 error_text，让诊断日志可读
+            try:
+                self._diagnose_sell_balance_mismatch(
+                    task=task,
+                    wallet=live_wallet,
+                    side=live_side,
+                    shares_attempted=sell_shares,
+                    price_attempted=self.config.fixed_sell_price,
+                    error_text=(
+                        f"on_chain_balance_mismatch:balance={live_balance_shares} "
+                        f"(CLOB reports wallet has not settled the matched entry; "
+                        f"sell attempt suppressed to avoid 400)"
+                    ),
+                )
+            except Exception as diag_exc:
+                print(f"   [抛售失败·诊断] 诊断过程自身出错: {diag_exc!r}")
         else:
-            # 挂单失败：记录失败原因
-            print(
-                f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
-                f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
-                f"原因: {sell_err}。强平窗口将直接对该侧执行 FAK 强平。"
+            sell_result = self._order_exec.place_gtc_sell_order(
+                wallet=live_wallet,
+                event_name=task.event_name,
+                side=live_side,
+                shares=sell_shares,
+                price=self.config.fixed_sell_price,
+                clob_token_ids=task.clob_token_ids,
+                fee_rate_bps=fee_rate_bps,
+                condition_id=task.condition_id,
             )
-            TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-            TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares, sell_err)
+
+            # 记录抛售单快照
+            if sell_result.snapshot:
+                sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
+                task.mark_order(sell_result.snapshot)
+
+            # 检查挂单是否成功
+            sell_success = sell_result.outcome.success
+            sell_order_id = sell_result.outcome.order_id if sell_success else None
+            sell_err = sell_result.outcome.error or "未知错误"
+
+            # 输出详细日志：包含钱包、方向、份额、价格、订单ID、是否成功
+            side_str = live_side.value if live_side else "?"
+            if sell_success:
+                print(
+                    f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
+                    f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
+                    f"(order_id={sell_order_id})"
+                )
+                TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+                TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares)
+            else:
+                # 挂单失败：记录失败原因
+                print(
+                    f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
+                    f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
+                    f"原因: {sell_err}。强平窗口将直接对该侧执行 FAK 强平。"
+                )
+                TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+                TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares, sell_err)
+                # 诊断：定位 CLOB balance=0 / fill 报告漂移 / token 错位等根因
+                try:
+                    self._diagnose_sell_balance_mismatch(
+                        task=task,
+                        wallet=live_wallet,
+                        side=live_side,
+                        shares_attempted=sell_shares,
+                        price_attempted=self.config.fixed_sell_price,
+                        error_text=sell_err,
+                    )
+                except Exception as diag_exc:
+                    print(f"   [抛售失败·诊断] 诊断过程自身出错: {diag_exc!r}")
 
         # 打印 stale 侧状态（用于调试）
         stale_order = task.get_order(stale_wallet.wallet_id)
@@ -952,8 +1162,14 @@ class TaskManager:
                     task.mark_order(cancel_result.snapshot)
                 live_side_val = live_side.value if live_side else "?"
                 TradeLogger.order_cancelled(f"{live_wallet.wallet_name}({live_side_val}) GTC抛售单", f"因为{stale_wallet.wallet_name}原始挂单先成交")
-            task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
-            task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
+            task.up_filled_shares = coalesce_filled_shares(
+                (task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else None),
+                (task.get_order(up_wallet.wallet_id).shares if task.get_order(up_wallet.wallet_id) else None),
+            )
+            task.down_filled_shares = coalesce_filled_shares(
+                (task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else None),
+                (task.get_order(down_wallet.wallet_id).shares if task.get_order(down_wallet.wallet_id) else None),
+            )
             task.trigger_reason = "stale_order_filled_first"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "stale侧挂单先成交")
             return
@@ -974,8 +1190,14 @@ class TaskManager:
                     task.mark_order(cancel_result.snapshot)
                 stale_side_val = stale_side.value if stale_side else "?"
                 TradeLogger.order_cancelled(f"{stale_wallet.wallet_name}({stale_side_val}) 原始挂单", f"因为{live_wallet.wallet_name}抛售单先成交")
-            task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
-            task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
+            task.up_filled_shares = coalesce_filled_shares(
+                (task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else None),
+                (task.get_order(up_wallet.wallet_id).shares if task.get_order(up_wallet.wallet_id) else None),
+            )
+            task.down_filled_shares = coalesce_filled_shares(
+                (task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else None),
+                (task.get_order(down_wallet.wallet_id).shares if task.get_order(down_wallet.wallet_id) else None),
+            )
             task.trigger_reason = "sell_order_filled_first"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "抛售单先成交")
             return
@@ -1014,8 +1236,14 @@ class TaskManager:
             #         cancel_result.snapshot.status = OrderStatus.CANCELLED.value
             #         task.mark_order(cancel_result.snapshot)
             #     TradeLogger.order_cancelled(live_wallet.wallet_name, "剩余抛售单")
-            task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
-            task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
+            task.up_filled_shares = coalesce_filled_shares(
+                (task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else None),
+                (task.get_order(up_wallet.wallet_id).shares if task.get_order(up_wallet.wallet_id) else None),
+            )
+            task.down_filled_shares = coalesce_filled_shares(
+                (task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else None),
+                (task.get_order(down_wallet.wallet_id).shares if task.get_order(down_wallet.wallet_id) else None),
+            )
             task.trigger_reason = "both_sides_filled"
             task.transition_to(EventTaskState.SETTLING_OUTCOME, "双边都成交，stale侧强平")
             return
@@ -1078,6 +1306,8 @@ class TaskManager:
                 timeout_sec=self.config.outcome_poll_timeout_sec,
                 poll_interval_sec=float(self.config.outcome_poll_interval_sec),
                 on_progress=self._handle_poller_progress,
+                slug=task.metadata.get("slug"),
+                clob_token_ids=task.metadata.get("clob_token_ids") or task.clob_token_ids,
             )
             self._pollers[poller_id].start()
             print("   [同步轮询] 等待市场结果...")
@@ -1325,7 +1555,7 @@ class TaskManager:
             for wallet in task.wallets:
                 for snap in task.get_order_history(wallet.wallet_id):
                     if snap.operation == OperationType.PLACE and snap.status == OrderStatus.FILLED.value:
-                        entry_filled_by_wallet[wallet.wallet_id] = float(snap.filled_shares or snap.shares or 0.0)
+                        entry_filled_by_wallet[wallet.wallet_id] = coalesce_filled_shares(snap.filled_shares, snap.shares)
                         break
 
         # 检查 GTC 抛售单是否已被市场吃掉
@@ -1355,7 +1585,7 @@ class TaskManager:
             if is_single_side_pending and wallet.wallet_id in entry_filled_by_wallet:
                 entry_filled_shares = entry_filled_by_wallet[wallet.wallet_id]
             elif order:
-                entry_filled_shares = float(order.filled_shares or order.shares or 0.0)
+                entry_filled_shares = coalesce_filled_shares(order.filled_shares, order.shares)
 
             # 判断当前挂单类型
             is_sell_order = order and order.operation == OperationType.SELL

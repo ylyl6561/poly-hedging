@@ -9,6 +9,14 @@ Exports:
 - direct_polymarket_trade, ensure_wallet_linked_with_retry
 """
 
+from .stderr_utils import install_sdk_logger_noise_filter
+
+# 在最早时机拦截 py_clob_client_v2 SDK 的传输层瞬时噪音
+# (e.g. "[py_clob_client_v2] request error: Server disconnected")。
+# 这些是 SDK 在 httpx.RequestError 时调 logger.error 打出来的，
+# 默认会直接写到真实 stderr，干扰运维日志。
+install_sdk_logger_noise_filter()
+
 from .api import (
     api_request,
     lookup_fee_rate,
@@ -23,6 +31,7 @@ from .api import (
     should_use_direct_live_clob,
     get_execution_route,
     get_wallet_usdc_balance,
+    fetch_token_balance,
     direct_polymarket_trade,
     ensure_wallet_linked_with_retry,
     reset_direct_clob_client,
@@ -48,6 +57,7 @@ __all__ = [
     "should_use_direct_live_clob",
     "get_execution_route",
     "get_wallet_usdc_balance",
+    "fetch_token_balance",
     "direct_polymarket_trade",
     "ensure_wallet_linked_with_retry",
     "reset_direct_clob_client",

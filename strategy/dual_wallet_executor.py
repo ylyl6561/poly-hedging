@@ -15,6 +15,7 @@ from collections import defaultdict
 from api import direct_polymarket_trade, cancel_order, fetch_order_status, fetch_side_orderbook_price
 
 from .dual_wallet_models import WalletIdentity, OrderSide, OperationType, OrderSnapshot, OrderStatus
+from .event_task import coalesce_filled_shares
 
 
 @dataclass
@@ -140,26 +141,32 @@ class DualWalletExecutor:
             return ExecutionOutcome(success=False, error="missing_order_id")
         scripted = self._get_dry_run_scripted_status(order_id=order_id, wallet=wallet)
         if scripted is not None:
+            raw_filled = scripted.get("filled_shares")
+            raw_shares = scripted.get("shares")
             return ExecutionOutcome(
                 success=True,
                 order_id=order_id,
                 price=scripted.get("price"),
-                shares=scripted.get("shares"),
+                shares=raw_shares,
                 filled_amount_usd=scripted.get("filled_amount_usd"),
-                filled_shares=scripted.get("filled_shares") or scripted.get("shares"),
+                # 关键：0 (成交为 0) 必须透传，不能用 or 把 0 当成 falsy 吞掉。
+                filled_shares=coalesce_filled_shares(raw_filled, raw_shares),
                 average_fill_price=scripted.get("average_fill_price") or scripted.get("price"),
                 raw_status=scripted.get("raw_status"),
                 raw=scripted,
             )
         result = fetch_order_status(order_id, mock=self.dry_run, account=wallet.account if wallet else None)
         if isinstance(result, dict) and result.get("success"):
+            raw_filled = result.get("filled_shares")
+            raw_shares = result.get("shares")
             return ExecutionOutcome(
                 success=True,
                 order_id=order_id,
                 price=result.get("price"),
-                shares=result.get("shares"),
+                shares=raw_shares,
                 filled_amount_usd=result.get("filled_amount_usd"),
-                filled_shares=result.get("filled_shares") or result.get("shares"),
+                # 关键：0 (成交为 0) 必须透传，不能用 or 把 0 当成 falsy 吞掉。
+                filled_shares=coalesce_filled_shares(raw_filled, raw_shares),
                 average_fill_price=result.get("average_fill_price") or result.get("price"),
                 raw_status=result.get("raw_status"),
                 raw=result,

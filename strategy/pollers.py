@@ -206,6 +206,7 @@ class OutcomePoller(Poller):
     市场结果轮询器。
 
     检查 Polymarket 市场的结算结果。
+    优先使用 CLOB API（更快），Gamma API 作为兜底。
     """
 
     def __init__(
@@ -215,6 +216,8 @@ class OutcomePoller(Poller):
         poll_interval_sec: float = 5.0,
         on_progress: callable | None = None,
         progress_interval_sec: float = 30.0,
+        slug: str | None = None,
+        clob_token_ids: list | None = None,
     ):
         super().__init__(
             name=f"市场结果轮询({condition_id[:8]}...)",
@@ -224,16 +227,22 @@ class OutcomePoller(Poller):
             progress_interval_sec=progress_interval_sec,
         )
         self.condition_id = condition_id
+        self.slug = slug
+        self.clob_token_ids = clob_token_ids
         self._last_payload: dict | None = None
         from strategy.dual_wallet_models import EventOutcome as _EO
         self._outcome: _EO = _EO.UNKNOWN
 
     def _check(self) -> "EventOutcome":
-        """检查市场结果。"""
+        """检查市场结果。优先使用 CLOB API。"""
         from strategy.dual_wallet_models import EventOutcome
         from api import fetch_market_outcome
         try:
-            payload = fetch_market_outcome(self.condition_id, slug=None, clob_token_ids=None)
+            payload = fetch_market_outcome(
+                self.condition_id,
+                slug=self.slug,
+                clob_token_ids=self.clob_token_ids,
+            )
             if isinstance(payload, dict):
                 self._last_payload = payload
                 raw_outcome = str(
@@ -433,13 +442,20 @@ def create_outcome_poller(
     timeout_sec: float = 900,
     poll_interval_sec: float = 5.0,
     on_progress: callable | None = None,
+    slug: str | None = None,
+    clob_token_ids: list | None = None,
 ) -> OutcomePoller:
-    """创建市场结果轮询器。"""
+    """创建市场结果轮询器。
+
+    优先使用 CLOB API 查询结果（更快），Gamma API 作为兜底。
+    """
     return OutcomePoller(
         condition_id=condition_id,
         timeout_sec=timeout_sec,
         poll_interval_sec=poll_interval_sec,
         on_progress=on_progress,
+        slug=slug,
+        clob_token_ids=clob_token_ids,
     )
 
 

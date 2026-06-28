@@ -33,6 +33,34 @@ from strategy.dual_wallet_models import (
 )
 
 
+def coalesce_filled_shares(filled_shares: Any, target_shares: Any) -> float:
+    """从 filled_shares / shares 两个字段中选出 fill 实际成交份额。
+
+    关键区别 vs `filled_shares or target_shares`：
+    - `or` 会把 0 当成 falsy，0 or X → X（吞掉真实的"成交为 0"）
+    - 这里把 None（"SDK 没填"）和 0（"SDK 实际回填成交为 0"）严格区分：
+      filled_shares is not None → 用 filled_shares（即便它是 0）
+      否则 → 用 target_shares（snapshot.shares 是 entry 阶段写入的"挂单目标量"）
+
+    边界：若 filled_shares 是无效字符串（如 "garbage"），视为"没有有效 fill 报告"，
+    降级用 target_shares（语义同 None）。与 None 行为保持一致。
+
+    单元测试：tests/test_coalesce_filled.py
+    """
+    if filled_shares is not None:
+        try:
+            return float(filled_shares)
+        except (TypeError, ValueError):
+            # 无效字符串 → 等同 None → fallback 到 target
+            pass
+    if target_shares is None:
+        return 0.0
+    try:
+        return float(target_shares)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @dataclass
 class EventTask:
     """
@@ -179,7 +207,6 @@ class EventTask:
     def get_order_history(self, wallet_id: str) -> list[OrderSnapshot]:
         """获取订单历史。"""
         return list(self.order_snapshots.get(wallet_id, []))
-
     def get_up_wallet(self) -> WalletIdentity | None:
         """获取 UP 方向的钱包。"""
         for wallet in self.wallets:
@@ -208,13 +235,13 @@ class EventTask:
             up_order = self.get_order(up_wallet.wallet_id)
             if up_order and up_order.status == "filled":
                 up_filled = True
-                up_shares = float(up_order.filled_shares or up_order.shares or 0)
+                up_shares = coalesce_filled_shares(up_order.filled_shares, up_order.shares)
 
         if down_wallet:
             down_order = self.get_order(down_wallet.wallet_id)
             if down_order and down_order.status == "filled":
                 down_filled = True
-                down_shares = float(down_order.filled_shares or down_order.shares or 0)
+                down_shares = coalesce_filled_shares(down_order.filled_shares, down_order.shares)
 
         return (up_filled and down_filled, up_shares, down_shares)
 
@@ -228,7 +255,7 @@ class EventTask:
                 continue
             order = self.get_order(wallet.wallet_id)
             if order and order.status == "filled":
-                shares = float(order.filled_shares or order.shares or 0)
+                shares = coalesce_filled_shares(order.filled_shares, order.shares)
                 if shares > 0:
                     return (True, wallet.wallet_id, shares)
 

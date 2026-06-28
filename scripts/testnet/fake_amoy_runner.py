@@ -140,6 +140,7 @@ from strategy.dual_wallet_models import (
     build_wallet_identities,
 )
 from strategy.dual_wallet_executor import DualWalletExecutor
+from strategy.event_task import coalesce_filled_shares
 from accounts import get_account_registry  # noqa: E402  (uses the stub we injected above)
 
 
@@ -236,15 +237,15 @@ def _make_drivers(scenario: dict, start_balances: dict[str, float], end_balances
         down_wallet = next((w for w in self.wallets if state.side_by_wallet_id.get(w.wallet_id) == OrderSide.DOWN), None)
         up = state.get_order(up_wallet.wallet_id) if up_wallet else None
         down = state.get_order(down_wallet.wallet_id) if down_wallet else None
-        up_filled = bool(up and up.status == OrderStatus.FILLED.value and (up.filled_shares or up.shares))
-        down_filled = bool(down and down.status == OrderStatus.FILLED.value and (down.filled_shares or down.shares))
+        up_filled = bool(up and up.status == OrderStatus.FILLED.value and coalesce_filled_shares(up.filled_shares, up.shares) > 0)
+        down_filled = bool(down and down.status == OrderStatus.FILLED.value and coalesce_filled_shares(down.filled_shares, down.shares) > 0)
 
         if up_filled and down_filled:
             from strategy.dual_wallet_models import ExecutionOutcome
             state.first_fill_wallet_id = up_wallet.wallet_id
             state.second_fill_wallet_id = down_wallet.wallet_id
             state.trigger_reason = "both_sides_filled"
-            state.trigger_detail = f"up_filled_shares={up.filled_shares or up.shares};down_filled_shares={down.filled_shares or down.shares}"
+            state.trigger_detail = f"up_filled_shares={coalesce_filled_shares(up.filled_shares, up.shares)};down_filled_shares={coalesce_filled_shares(down.filled_shares, down.shares)}"
             state.flow_state = EventFlowState.ENTRY_CONFIRMED
             self._log_state(state, phase=state.flow_state.value, note="both sides filled (fake_amoy)")
             return
@@ -264,9 +265,9 @@ def _make_drivers(scenario: dict, start_balances: dict[str, float], end_balances
                     success=True,
                     order_id=live_snapshot.order_id,
                     price=live_snapshot.average_fill_price or live_snapshot.price,
-                    shares=live_snapshot.filled_shares or live_snapshot.shares,
+                    shares=coalesce_filled_shares(live_snapshot.filled_shares, live_snapshot.shares),
                     filled_amount_usd=live_snapshot.filled_amount_usd,
-                    filled_shares=live_snapshot.filled_shares or live_snapshot.shares,
+                    filled_shares=coalesce_filled_shares(live_snapshot.filled_shares, live_snapshot.shares),
                     average_fill_price=live_snapshot.average_fill_price or live_snapshot.price,
                     raw={"source": "fake_amoy_state"},
                 ),

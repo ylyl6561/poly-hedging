@@ -239,6 +239,8 @@ def _iter_gamma_markets(payload):
 def fetch_market_outcome(market_id, slug=None, clob_token_ids=None):
     """Fetch settled outcome for a Polymarket market.
 
+    优化策略：优先使用 CLOB API（结算更快），Gamma API 作为兜底。
+
     Args:
         market_id: The market condition_id or slug.
         slug: Optional Gamma event/market slug for fallback lookup.
@@ -251,52 +253,101 @@ def fetch_market_outcome(market_id, slug=None, clob_token_ids=None):
     if not market_id and not slug and not clob_token_ids:
         return None
 
-    # Try CLOB market info endpoint first (most reliable for settled markets)
+    # ===== 第一优先级：CLOB API（结算最快）=====
     saw_unsettled = False
+
+    # 1. 直接用 condition_id 查询 CLOB /markets/{id}
     if market_id:
         result = api_request(f"{CLOB_API}/markets/{quote(str(market_id))}", timeout=10)
         if result and isinstance(result, dict) and not result.get("error"):
-            extracted = _extract_outcome_from_market(result)
-            if extracted and (extracted.get("outcome") or extracted.get("winner")):
-                return extracted
-            if extracted and not extracted.get("settled"):
-                saw_unsettled = True
+            extracted = _extract_outcome_from_market(result, market_id=market_id)
+            if extracted:
+                outcome = extracted.get("outcome") or extracted.get("winner")
+                if outcome:
+                    extracted["source"] = "clob_direct"
+                    return extracted
+                if not extracted.get("settled"):
+                    saw_unsettled = True
 
-    gamma_urls = []
-    if slug:
-        quoted_slug = quote(str(slug))
-        gamma_urls.append(f"{GAMMA_API}/events/slug/{quoted_slug}")
-        gamma_urls.append(f"{GAMMA_API}/markets/slug/{quoted_slug}")
-    if market_id:
-        quoted_market_id = quote(str(market_id))
-        gamma_urls.append(f"{GAMMA_API}/markets?condition_ids={quoted_market_id}")
-        gamma_urls.append(f"{GAMMA_API}/markets?conditionId={quoted_market_id}")
-        gamma_urls.append(f"{GAMMA_API}/markets?market={quoted_market_id}")
+        # 2. 用 condition_id 过滤查询 CLOB /markets?condition_id={id}
+        result = api_request(f"{CLOB_API}/markets?condition_id={quote(str(market_id))}", timeout=10)
+        if result and isinstance(result, dict) and "data" in result:
+            for market in result.get("data", []):
+                extracted = _extract_outcome_from_market(market, market_id=market_id)
+                if extracted:
+                    outcome = extracted.get("outcome") or extracted.get("winner")
+                    if outcome:
+                        extracted["source"] = "clob_filter"
+                        return extracted
+                    if not extracted.get("settled"):
+                        saw_unsettled = True
+
+    # 3. 用 token_id 查询 CLOB /markets-by-token/{token_id}
     for token_id in clob_token_ids or []:
-        gamma_urls.append(f"{CLOB_API}/markets-by-token/{quote(str(token_id))}")
+        result = api_request(f"{CLOB_API}/markets-by-token/{quote(str(token_id))}", timeout=10)
+        if result and isinstance(result, dict) and not result.get("error"):
+            extracted = _extract_outcome_from_market(result, market_id=market_id)
+            if extracted:
+                outcome = extracted.get("outcome") or extracted.get("winner")
+                if outcome:
+                    extracted["source"] = "clob_token"
+                    return extracted
+                if not extracted.get("settled"):
+                    saw_unsettled = True
 
-    for url in gamma_urls:
-        payload = api_request(url, timeout=10)
-        if not payload or not isinstance(payload, (dict, list)) or (isinstance(payload, dict) and payload.get("error")):
-            continue
-        for market in _iter_gamma_markets(payload):
-            extracted = _extract_outcome_from_market(market, market_id=market_id)
-            if not extracted and slug:
-                extracted = _extract_outcome_from_market(market, market_id=slug)
-            if not extracted:
+    # ===== 第二优先级：Gamma API（兜底）=====
+    # Gamma API 比 CLOB 慢，但提供更完整的市场信息
+
+    # 1. 用 slug 查询（BTC 5m 市场使用 deterministic slug）
+    if slug:
+        for url in (
+            f"{GAMMA_API}/events/slug/{quote(str(slug))}",
+            f"{GAMMA_API}/markets/slug/{quote(str(slug))}",
+        ):
+            payload = api_request(url, timeout=10)
+            if not payload or not isinstance(payload, (dict, list)):
                 continue
-            if extracted.get("outcome") or extracted.get("winner"):
-                extracted["source"] = "gamma" if "gamma-api" in url else "clob_token"
-                return extracted
-            if not extracted.get("settled"):
-                saw_unsettled = True
+            if isinstance(payload, dict) and payload.get("error"):
+                continue
+            for market in _iter_gamma_markets(payload):
+                extracted = _extract_outcome_from_market(market, market_id=slug)
+                if extracted:
+                    outcome = extracted.get("outcome") or extracted.get("winner")
+                    if outcome:
+                        extracted["source"] = "gamma_slug"
+                        return extracted
+                    if not extracted.get("settled"):
+                        saw_unsettled = True
 
+    # 2. 用 condition_id 查询 Gamma（最后的兜底）
+    if market_id:
+        for url in (
+            f"{GAMMA_API}/markets?conditionId={quote(str(market_id))}",
+            f"{GAMMA_API}/markets?condition_ids={quote(str(market_id))}",
+            f"{GAMMA_API}/markets?market={quote(str(market_id))}",
+        ):
+            payload = api_request(url, timeout=10)
+            if not payload or not isinstance(payload, (dict, list)):
+                continue
+            if isinstance(payload, dict) and payload.get("error"):
+                continue
+            for market in _iter_gamma_markets(payload):
+                extracted = _extract_outcome_from_market(market, market_id=market_id)
+                if extracted:
+                    outcome = extracted.get("outcome") or extracted.get("winner")
+                    if outcome:
+                        extracted["source"] = "gamma_condition"
+                        return extracted
+                    if not extracted.get("settled"):
+                        saw_unsettled = True
+
+    # ===== 返回结果 =====
     if saw_unsettled:
         return {
             "outcome": None,
             "winner": None,
             "settled": False,
-            "source": "fallback",
+            "source": "pending",
         }
 
     return None
@@ -750,6 +801,191 @@ def get_wallet_usdc_balance(*, account: AccountContext) -> dict:
         "account_id": account.account_id,
         "label": account.label,
         "error": "balance_unavailable",
+    }
+
+
+# =============================================================================
+# Token Balance (CONDITIONAL asset) — for sell-side on-chain reconciliation
+# =============================================================================
+#
+# 背景：
+#   Polymarket V2 CLOB 的 ``status="matched"`` 仅代表 off-chain 撮合成功，
+#   token 异步通过 CTF Exchange 转账到 proxy wallet。在 5m BTC 等快市场上，
+#   GTC BUY 经常报告 matched 但 ``CTF.balanceOf`` 仍为 0（issue #54 / #328）。
+#   因此在抛售单挂出之前必须直接读 on-chain token balance 做对账，避免
+#   CLOB 打回 ``not enough balance / allowance``。
+#
+# 单位：Polymarket CLOB 的 CONDITIONAL token 与 orderbook 用同样的 6 位精度，
+# 因此 ``raw_balance / 1_000_000.0`` = shares（人类可读）。
+
+_CONDITIONAL_BALANCE_PARAMS_BUILDERS = (
+    # (asset_id, signature_type) — V2 SDK 主路径
+    ("balance_allowance_v2_signature", lambda asset_id, sig: _try_build_conditional_params_v2(asset_id, sig)),
+    # 仅传 asset_id
+    ("balance_allowance_asset_only", lambda asset_id, sig: _try_build_conditional_params(asset_id, sig, with_signature=False)),
+    # 仅传 signature_type（兜底）
+    ("balance_allowance_signature_only", lambda asset_id, sig: _try_build_conditional_params(asset_id, sig, with_asset=False)),
+    # 都不传
+    ("balance_allowance_no_args", lambda asset_id, sig: ((), {})),
+)
+
+
+def _try_build_conditional_params_v2(asset_id: str, signature_type: int):
+    """尝试用 V2 SDK 的 BalanceAllowanceParams + AssetType.CONDITIONAL 构造参数。"""
+    try:
+        from py_clob_client_v2 import BalanceAllowanceParams, AssetType
+    except ImportError:
+        try:
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+        except ImportError:
+            return None
+    try:
+        return ((), {"params": BalanceAllowanceParams(
+            asset_type=AssetType.CONDITIONAL,
+            token_id=str(asset_id),
+            signature_type=signature_type,
+        )})
+    except TypeError:
+        return None
+
+
+def _try_build_conditional_params(asset_id: str, signature_type: int, *, with_asset: bool = True, with_signature: bool = True):
+    """降级路径：用 dict 构造 asset_type=CONDITIONAL + token_id / signature_type。"""
+    params: dict = {"asset_type": "CONDITIONAL"}
+    if with_asset:
+        params["token_id"] = str(asset_id)
+    if with_signature:
+        params["signature_type"] = signature_type
+    return ((), {"params": params})
+
+
+def _extract_token_balance(payload) -> float | None:
+    """从 get_balance_allowance 响应中解析 CONDITIONAL token 余额（shares）。"""
+    if payload is None:
+        return None
+    if isinstance(payload, (int, float)):
+        try:
+            return float(payload) / 1_000_000.0
+        except (TypeError, ValueError):
+            return None
+    if isinstance(payload, str):
+        try:
+            return float(payload) / 1_000_000.0
+        except ValueError:
+            return None
+    if isinstance(payload, list):
+        for item in payload:
+            parsed = _extract_token_balance(item)
+            if parsed is not None:
+                return parsed
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    candidate_keys = (
+        "balance", "available", "amount", "free", "value",
+        "token_balance", "asset_balance", "size",
+        # 嵌套结构兜底
+    )
+    for key in candidate_keys:
+        value = payload.get(key)
+        if value is None:
+            continue
+        try:
+            return float(value) / 1_000_000.0
+        except (TypeError, ValueError):
+            continue
+
+    for nested_key in ("balance", "data", "allowance"):
+        nested = payload.get(nested_key)
+        parsed = _extract_token_balance(nested)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def fetch_token_balance(*, asset_id: str, account: AccountContext, mock: bool = False) -> dict:
+    """读取 wallet 在某 CONDITIONAL token 上的 CLOB 余额（shares）。
+
+    Returns:
+        dict 含 success / balance_shares（浮点 shares） / raw / error 等字段。
+        失败时 ``success=False`` 且 ``balance_shares=None``。
+    """
+    if not asset_id:
+        return {
+            "success": False,
+            "asset_id": asset_id,
+            "error": "missing_asset_id",
+            "balance_shares": None,
+            "account_id": account.account_id,
+        }
+    if mock:
+        return {
+            "success": True,
+            "asset_id": asset_id,
+            "balance_shares": 0.0,
+            "raw": {"mock": True},
+            "account_id": account.account_id,
+            "label": account.label,
+        }
+
+    try:
+        client = get_direct_clob_client(account=account)
+    except Exception as exc:
+        return {
+            "success": False,
+            "asset_id": asset_id,
+            "error": f"clob_client_init_failed:{exc}",
+            "balance_shares": None,
+            "account_id": account.account_id,
+        }
+
+    # 多种调用形态依次尝试
+    method = getattr(client, "get_balance_allowance", None)
+    if method is None:
+        return {
+            "success": False,
+            "asset_id": asset_id,
+            "error": "method_missing:get_balance_allowance",
+            "balance_shares": None,
+            "account_id": account.account_id,
+        }
+
+    last_error: str | None = None
+    for label, builder in _CONDITIONAL_BALANCE_PARAMS_BUILDERS:
+        built = builder(asset_id, account.signature_type)
+        if built is None:
+            continue
+        args, kwargs = built
+        try:
+            payload = method(*args, **kwargs)
+        except TypeError as exc:
+            last_error = f"{label}:{exc}"
+            continue
+        except Exception as exc:
+            last_error = f"{label}:{exc}"
+            continue
+        parsed = _extract_token_balance(payload)
+        if parsed is not None:
+            return {
+                "success": True,
+                "asset_id": asset_id,
+                "balance_shares": parsed,
+                "raw": payload,
+                "probe": label,
+                "account_id": account.account_id,
+                "label": account.label,
+            }
+        # 解析不出但没抛错 → 记录后继续尝试下一种形态
+        last_error = f"{label}:parse_failed"
+
+    return {
+        "success": False,
+        "asset_id": asset_id,
+        "error": last_error or "balance_unavailable",
+        "balance_shares": None,
+        "account_id": account.account_id,
+        "label": account.label,
     }
 
 

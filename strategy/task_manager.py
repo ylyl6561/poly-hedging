@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -22,7 +23,7 @@ from typing import Any, Callable
 from core.config import (
     DUAL_WALLET_ENTRY_UP_PRICE,
     DUAL_WALLET_ENTRY_DOWN_PRICE,
-    DUAL_WALLET_ENTRY_AMOUNT_USD,
+    DUAL_WALLET_ENTRY_SHARES,
     DUAL_WALLET_MIN_SECONDS_BEFORE_START,
 )
 
@@ -121,6 +122,12 @@ class TradeLogger:
         """抛售单已挂。"""
         symbol = cls.UP_SYMBOL if side == "UP" else cls.DOWN_SYMBOL
         print(f"   [抛售] {wallet_name} {symbol} @ {price:.2f} | 份额: {shares:.2f}")
+
+    @classmethod
+    def sell_order_failed(cls, wallet_name: str, side: str, price: float, shares: float, error: str) -> None:
+        """抛售单挂单失败。"""
+        symbol = cls.UP_SYMBOL if side == "UP" else cls.DOWN_SYMBOL
+        print(f"   [抛售失败] {wallet_name} {symbol} @ {price:.2f} | 份额: {shares:.2f} | 原因: {error}")
 
     @classmethod
     def waiting_close_window(cls, remaining: float) -> None:
@@ -238,12 +245,13 @@ from strategy.pollers import (
     create_outcome_poller,
     create_balance_poller,
 )
-from strategy.order_executor_v2 import OrderExecutorV2, OrderOperationResult
+from strategy.order_executor_v2 import ExecutionOutcome, OrderExecutorV2, OrderOperationResult
 from strategy.dual_wallet_models import (
     DualWalletEventState,
     EventOutcome,
     EventFlowState,
     LossWindowTracker,
+    OrderSnapshot,
     OrderStatus,
     OrderSide,
     OperationType,
@@ -651,7 +659,7 @@ class TaskManager:
         print(f"   开始: {start_time_utc.strftime('%H:%M:%S')} UTC ({time_to_event_start:.0f}s) | 结束: {end_time_utc.strftime('%H:%M:%S')} UTC")
 
         # 从 core.config 读取配置值
-        amount_usd = DUAL_WALLET_ENTRY_AMOUNT_USD
+        entry_shares = DUAL_WALLET_ENTRY_SHARES
         up_price = DUAL_WALLET_ENTRY_UP_PRICE
         down_price = DUAL_WALLET_ENTRY_DOWN_PRICE
         condition_id = task.condition_id
@@ -665,14 +673,21 @@ class TaskManager:
             side = task.side_by_wallet_id.get(wallet.wallet_id)
             side_symbol = "▲" if side == OrderSide.UP else "▼" if side == OrderSide.DOWN else "?"
             wallet_assignments.append(f"{wallet.wallet_name}{side_symbol}")
-        print(f"   分配: {' | '.join(wallet_assignments)} | 金额: ${amount_usd:.2f} | UP: {up_price:.2f} / DOWN: {down_price:.2f}")
+        avg_price = (up_price + down_price) / 2.0 if (up_price + down_price) > 0 else 0.0
+        approx_amount = entry_shares * avg_price
+        print(
+            f"   分配: {' | '.join(wallet_assignments)} | "
+            f"数量/单: {entry_shares:.4f} shares | "
+            f"预计金额: ${approx_amount:.2f} (均价 ${avg_price:.2f}) | "
+            f"UP: {up_price:.2f} / DOWN: {down_price:.2f}"
+        )
 
         # 打印余额
         print("   [余额] 正在获取钱包余额...")
-        self._log_wallet_account_data(amount_usd)
+        self._log_wallet_account_data(approx_amount)
 
         # 进入挂单阶段，状态机会在下一 tick 调用 _process_placing_entry
-        task.metadata["amount_usd"] = amount_usd
+        task.metadata["entry_shares"] = entry_shares
         task.metadata["up_price"] = up_price
         task.metadata["down_price"] = down_price
         task.metadata["fee_rate_bps"] = task.metadata.get("fee_rate_bps", 0)
@@ -681,15 +696,17 @@ class TaskManager:
     def _process_placing_entry(self, task: EventTask) -> None:
         """处理 PLACING_ENTRY 状态 - 挂初始买单。"""
         print("   [挂单] 提交初始买单...")
-        
+
         up_price = task.metadata.get("up_price", 0.5)
         down_price = task.metadata.get("down_price", 0.5)
-        amount_usd = task.metadata.get("amount_usd", 10.0)
+        entry_shares = float(task.metadata.get("entry_shares", task.metadata.get("amount_usd", 10.0)))
         fee_rate_bps = task.metadata.get("fee_rate_bps", 0)
 
         for wallet in task.wallets:
             side = task.side_by_wallet_id.get(wallet.wallet_id)
             price = up_price if side == OrderSide.UP else down_price
+            # 按"每单固定 token 数量"换算成 amount_usd（保持原有资金门槛判断逻辑不变）
+            amount_usd = entry_shares * float(price) if price and price > 0 else 0.0
 
             result = self._order_exec.place_entry_order(
                 wallet=wallet,
@@ -702,8 +719,12 @@ class TaskManager:
                 condition_id=task.condition_id,
             )
 
-            # 记录订单快照
+            # 记录订单快照（snapshot 同步每单数量，便于后续 sell/force_close 还原）
             if result.snapshot:
+                if getattr(result.snapshot, "shares", None) in (None, 0.0):
+                    result.snapshot.shares = entry_shares
+                if not getattr(result.snapshot, "amount_usd", None):
+                    result.snapshot.amount_usd = amount_usd
                 task.mark_order(result.snapshot)
 
             # 打印日志
@@ -713,6 +734,8 @@ class TaskManager:
             if not result.outcome.success:
                 print(f"      ⚠️ 挂单失败: {result.outcome.error}")
 
+        # 同步把 entry_shares 写到 metadata 顶层，下游可直接读取
+        task.metadata["entry_shares"] = entry_shares
         task.trigger_reason = "entry_placed"
         task.transition_to(EventTaskState.WAITING_ENTRY, "挂单完成")
         print("   [挂单完成] 等待成交...")
@@ -835,12 +858,41 @@ class TaskManager:
             sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
             task.mark_order(sell_result.snapshot)
 
-        TradeLogger.single_filled(live_wallet.wallet_name, live_side.value if live_side else "?", live_filled_shares)
-        TradeLogger.sell_order_placed(live_wallet.wallet_name, live_side.value if live_side else "?", self.config.fixed_sell_price, sell_shares)
+        # 检查挂单是否成功
+        sell_success = sell_result.outcome.success
+        sell_order_id = sell_result.outcome.order_id if sell_success else None
+        sell_err = sell_result.outcome.error or "未知错误"
+
+        # 输出详细日志：包含钱包、方向、份额、价格、订单ID、是否成功
+        side_str = live_side.value if live_side else "?"
+        if sell_success:
+            print(
+                f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
+                f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
+                f"(order_id={sell_order_id})"
+            )
+            TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+            TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares)
+        else:
+            # 挂单失败：记录失败原因
+            print(
+                f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
+                f"{sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
+                f"原因: {sell_err}。强平窗口将直接对该侧执行 FAK 强平。"
+            )
+            TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+            TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, sell_shares, sell_err)
+
+        # 打印 stale 侧状态（用于调试）
+        stale_order = task.get_order(stale_wallet.wallet_id)
+        stale_status = OrderStatus(stale_order.status).name if stale_order and stale_order.status else "无挂单"
+        print(
+            f"   [单边] [{stale_wallet.wallet_name}] {stale_side.value if stale_side else '?'} 侧 保留挂单(状态={stale_status}), "
+            f"等待强平窗口时再做处理"
+        )
 
         task.trigger_reason = "single_side_fill_pending_close"
         task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "单边处理完成，等待强平窗口")
-        print("   [单边] 已挂抛售单，等待强平窗口...")
 
     def _process_waiting_close_window(self, task: EventTask) -> None:
         """
@@ -875,6 +927,8 @@ class TaskManager:
         first_fill_id = task.first_fill_wallet_id
         stale_wallet = up_wallet if first_fill_id == down_wallet.wallet_id else down_wallet
         live_wallet = down_wallet if first_fill_id == down_wallet.wallet_id else up_wallet
+        stale_side = task.side_by_wallet_id.get(stale_wallet.wallet_id)
+        live_side = task.side_by_wallet_id.get(live_wallet.wallet_id)
 
         stale_order = task.get_order(stale_wallet.wallet_id)
         live_order = task.get_order(live_wallet.wallet_id)
@@ -885,7 +939,9 @@ class TaskManager:
 
         if stale_filled and not live_filled:
             # 情况1：stale 侧成交，live 侧未成交 → 取消 live 的抛售单
-            print("\n   [双边处理] stale侧挂单成交，取消抛售单")
+            stale_side_val = stale_side.value if stale_side else "?"
+            live_side_val = live_side.value if live_side else "?"
+            print(f"\n   [双边处理] {stale_wallet.wallet_name}({stale_side_val}) 原始挂单先成交，取消 {live_wallet.wallet_name}({live_side_val}) 的GTC抛售单")
             if live_order and live_order.order_id:
                 cancel_result = self._order_exec.cancel_order(
                     live_order.order_id, live_wallet,
@@ -894,7 +950,8 @@ class TaskManager:
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
                     task.mark_order(cancel_result.snapshot)
-                TradeLogger.order_cancelled(live_wallet.wallet_name, "抛售单")
+                live_side_val = live_side.value if live_side else "?"
+                TradeLogger.order_cancelled(f"{live_wallet.wallet_name}({live_side_val}) GTC抛售单", f"因为{stale_wallet.wallet_name}原始挂单先成交")
             task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
             task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
             task.trigger_reason = "stale_order_filled_first"
@@ -903,7 +960,9 @@ class TaskManager:
 
         elif live_filled and not stale_filled:
             # 情况2：live 侧（抛售单）成交，stale 侧未成交 → 取消 stale 的挂单
-            print("\n   [双边处理] 抛售单成交，取消stale侧挂单")
+            live_side_val = live_side.value if live_side else "?"
+            stale_side_val = stale_side.value if stale_side else "?"
+            print(f"\n   [双边处理] {live_wallet.wallet_name}({live_side_val}) GTC抛售单先成交，取消 {stale_wallet.wallet_name}({stale_side_val}) 的原始挂单")
             if stale_order and stale_order.order_id:
                 stale_side = None if stale_order.operation == OperationType.SELL else stale_order.side
                 cancel_result = self._order_exec.cancel_order(
@@ -913,7 +972,8 @@ class TaskManager:
                 if cancel_result.snapshot:
                     cancel_result.snapshot.status = OrderStatus.CANCELLED.value
                     task.mark_order(cancel_result.snapshot)
-                TradeLogger.order_cancelled(stale_wallet.wallet_name, "stale侧挂单")
+                stale_side_val = stale_side.value if stale_side else "?"
+                TradeLogger.order_cancelled(f"{stale_wallet.wallet_name}({stale_side_val}) 原始挂单", f"因为{live_wallet.wallet_name}抛售单先成交")
             task.up_filled_shares = task.get_order(up_wallet.wallet_id).filled_shares if task.get_order(up_wallet.wallet_id) else 0.0
             task.down_filled_shares = task.get_order(down_wallet.wallet_id).filled_shares if task.get_order(down_wallet.wallet_id) else 0.0
             task.trigger_reason = "sell_order_filled_first"
@@ -1105,36 +1165,113 @@ class TaskManager:
 
             cancel_snapshot = cancel_result.snapshot
             if cancel_snapshot:
-                cancel_snapshot.status = OrderStatus.CANCELLED.value if cancel_result.success else OrderStatus.FAILED.value
+                cancel_snapshot.status = OrderStatus.CANCELLED.value if cancel_result.outcome.success else OrderStatus.FAILED.value
                 task.mark_order(cancel_snapshot)
 
-            status_str = "成功" if cancel_result.success else "失败"
+            status_str = "成功" if cancel_result.outcome.success else "失败"
             print(f"      [{wallet.wallet_name}] 取消 entry 挂单: {status_str}")
             TradeLogger.order_cancelled(wallet.wallet_name, "entry_timeout 取消")
 
+    # 同一 task 在 MIN_REFRESH_INTERVAL_SEC 内的重复调用直接早返回。
+    # 避免 100ms tick + 多 wallet 并发时，订单状态查询把 Polymarket CLOB 的
+    # 公开 GET /orders/{id} 限速打爆（12 task × 2 wallet × 10Hz = 240 req/s）。
+    # fill 检测延迟上限 ≈ MIN_REFRESH_INTERVAL_SEC，业务无感（5m 市场限价单 fill < 1s）。
+    MIN_REFRESH_INTERVAL_SEC = 0.25
+
     def _refresh_order_statuses(self, task: EventTask) -> None:
-        """刷新订单状态。"""
+        """
+        刷新订单状态。
+
+        采用 ThreadPoolExecutor 并发调用 fetch_order_status，把多个钱包的 HTTP 查询
+        从串行改成并行，整体延迟从 O(N * T) 降到 O(T)（N 为 wallet 数，T 为单次 HTTP 延迟）。
+
+        状态归一化、mark_order、日志等下游处理仍按 wallet 顺序执行，
+        与原串行实现的逻辑判定完全等价。
+
+        节流：tick=100ms 时，同 task 的实际 fetch 频率上限为 1/MIN_REFRESH_INTERVAL_SEC = 4Hz。
+        多 task 并发场景下 HTTP 流量 = task 数 × wallet 数 × 4 / IP，远低于 CLOB 公开限速。
+        """
+        # ===== 第 0 步：节流早返回 =====
+        # _last_refresh_time 是 task 实例属性，首次访问默认 0.0 → 首次一定执行
+        now_mono = time.monotonic()
+        last_refresh = getattr(task, "_last_refresh_time", 0.0)
+        if now_mono - last_refresh < self.MIN_REFRESH_INTERVAL_SEC:
+            return
+        task._last_refresh_time = now_mono
+
+        now_str = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+
+        # ===== 第 1 步：按 wallet 收集"待刷新"的订单快照（保留原过滤逻辑）=====
+        pending: list[tuple[WalletIdentity, OrderSnapshot]] = []
         for wallet in task.wallets:
             snapshot = task.get_order(wallet.wallet_id)
             if not snapshot or not snapshot.order_id:
                 continue
-            if snapshot.status != OrderStatus.SUBMITTED.value:
-                continue
             if snapshot.operation not in {OperationType.PLACE, OperationType.SELL}:
                 continue
+            # 只对 SUBMITTED 状态的订单调用 API 检查
+            if snapshot.status != OrderStatus.SUBMITTED.value:
+                continue
+            pending.append((wallet, snapshot))
 
-            outcome, updated_snapshot = self._order_exec.refresh_order_status(
-                order_id=snapshot.order_id,
-                wallet=wallet,
-            )
+        if not pending:
+            return
 
+        # ===== 第 2 步：并发执行 fetch_order_status =====
+        # 每个 wallet 一个 worker；数量 ≤ wallet 数
+        results: dict[str, tuple[ExecutionOutcome, OrderSnapshot | None, WalletIdentity]] = {}
+
+        def _fetch_one(wallet: WalletIdentity, snapshot: OrderSnapshot) -> tuple[str, tuple[ExecutionOutcome, OrderSnapshot | None, WalletIdentity]]:
+            try:
+                outcome, _ = self._order_exec.refresh_order_status(
+                    order_id=snapshot.order_id,
+                    wallet=wallet,
+                )
+            except Exception as exc:
+                # 异常隔离：单个 wallet 出错不阻塞其它
+                failed_outcome = ExecutionOutcome(success=False, error=f"refresh_exception:{exc}")
+                return wallet.wallet_id, (failed_outcome, None, wallet)
+            return wallet.wallet_id, (outcome, None, wallet)
+
+        max_workers = max(1, min(len(pending), 8))
+        # 软超时：单个 HTTP 请求超过此时间则视为失败，释放 tick 继续推进
+        FETCH_TIMEOUT_SEC = 2.0
+
+        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="order-refresh") as pool:
+            futures = {
+                pool.submit(_fetch_one, wallet, snapshot): wallet.wallet_id
+                for wallet, snapshot in pending
+            }
+            for fut in as_completed(futures):
+                wallet_id = futures[fut]
+                try:
+                    wid, payload = fut.result(timeout=FETCH_TIMEOUT_SEC)
+                except TimeoutError:
+                    # 单 wallet 超时不阻塞 tick：视为该 wallet 本轮刷新失败
+                    print(f"      ⚠️ 订单状态刷新超时 wallet={wallet_id}，本轮跳过")
+                    continue
+                except Exception as exc:
+                    # 防御性兜底
+                    continue
+                results[wid] = payload
+
+        # ===== 第 3 步：按 wallet 原顺序处理结果，保持与旧串行实现相同的判定 =====
+        for wallet, snapshot in pending:
+            payload = results.get(wallet.wallet_id)
+            if payload is None:
+                continue
+            outcome, _, _ = payload
+
+            prev_status = snapshot.status
+
+            # 原逻辑：失败直接 continue，不更新 snapshot
             if not outcome.success:
                 continue
 
             raw = outcome.raw if isinstance(outcome.raw, dict) else {}
             status = str(raw.get("status") or "").lower()
 
-            # 归一化状态
+            # 归一化状态（与原实现完全一致）
             normalized_status = {
                 "live": OrderStatus.SUBMITTED.value,
                 "open": OrderStatus.SUBMITTED.value,
@@ -1148,7 +1285,13 @@ class TaskManager:
                 "rejected": OrderStatus.FAILED.value,
             }.get(status, status)
 
-            if normalized_status not in {OrderStatus.SUBMITTED.value, OrderStatus.FILLED.value, OrderStatus.CANCELLED.value, OrderStatus.FAILED.value}:
+            # 原逻辑：未识别状态直接 continue
+            if normalized_status not in {
+                OrderStatus.SUBMITTED.value,
+                OrderStatus.FILLED.value,
+                OrderStatus.CANCELLED.value,
+                OrderStatus.FAILED.value,
+            }:
                 continue
 
             snapshot.status = normalized_status
@@ -1163,6 +1306,12 @@ class TaskManager:
                 snapshot.average_fill_price = float(outcome.average_fill_price)
 
             task.mark_order(snapshot)
+
+            # 状态变化时打印诊断日志（与原格式完全一致）
+            new_status = snapshot.status
+            if prev_status != new_status:
+                op_type = snapshot.operation.value if hasattr(snapshot.operation, 'value') else str(snapshot.operation)
+                print(f"[{now_str}] [订单状态变化] {wallet.wallet_name} | 操作={op_type} | {prev_status} → {new_status} | order_id={snapshot.order_id[:16]}...")
 
     def _execute_force_close(self, task: EventTask) -> None:
         """执行强平。"""
@@ -1189,7 +1338,7 @@ class TaskManager:
 
         # 检查是否有任何钱包的抛售单已成交
         # 如果有，则只撤单不执行 FAK 强平（因为抛售单已成交相当于已对冲）
-        any_sell_filled = any(sell_order_filled_by_wallet.get(w.id, False) for w in task.wallets)
+        any_sell_filled = any(sell_order_filled_by_wallet.get(w.wallet_id, False) for w in task.wallets)
 
         print(f"\n⚡ 开始执行强平: {task.event_name} | 窗口={close_window_sec}s | 触发={task.trigger_reason}")
         if any_sell_filled:

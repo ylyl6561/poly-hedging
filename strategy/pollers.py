@@ -13,9 +13,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Generic, TypeVar
 
-from api import fetch_market_outcome, get_wallet_usdc_balance
-from strategy.dual_wallet_models import EventOutcome
-
 
 T = TypeVar("T")
 
@@ -108,7 +105,34 @@ class Poller(ABC):
         - is_complete: 条件是否满足
         - is_timeout: 是否超时
         - value: 结果值（如果有）
+
+        节流逻辑：未到 poll_interval_sec 不执行 _check()，直接返回上一次的 result。
+        这样 tick 频率从 1s 提升到 100ms 时，poller 仍按设计的 5s/20s 间隔轮询，
+        不会产生 50x 的 API 调用放大。但 is_complete / is_timeout 的判定每次都执行，
+        确保任务能在 deadline 到达时及时退出。
         """
+        # 已完成：直接返回上一次的 result，不再 _check()
+        if self._is_complete:
+            return self._result
+
+        # 仅对 _check() 做节流；超时判定每次都做（轻量级）
+        if self._is_started:
+            now = time.monotonic()
+            elapsed_since_last = now - self._last_poll_time
+            if elapsed_since_last < self.poll_interval_sec:
+                # 未到节流窗口：检查是否已超时，是则强制返回；否则返回上次 result
+                remaining = self.remaining_sec
+                if remaining <= 0:
+                    self._is_complete = True
+                    self._result = PollerResult(
+                        value=self._get_value(),
+                        is_complete=True,
+                        is_timeout=True,
+                        elapsed_sec=self.elapsed_sec,
+                        rounds=self._rounds,
+                    )
+                return self._result
+
         if not self._is_started:
             self.start()
 
@@ -201,10 +225,13 @@ class OutcomePoller(Poller):
         )
         self.condition_id = condition_id
         self._last_payload: dict | None = None
-        self._outcome: EventOutcome = EventOutcome.UNKNOWN
+        from strategy.dual_wallet_models import EventOutcome as _EO
+        self._outcome: _EO = _EO.UNKNOWN
 
-    def _check(self) -> EventOutcome:
+    def _check(self) -> "EventOutcome":
         """检查市场结果。"""
+        from strategy.dual_wallet_models import EventOutcome
+        from api import fetch_market_outcome
         try:
             payload = fetch_market_outcome(self.condition_id, slug=None, clob_token_ids=None)
             if isinstance(payload, dict):

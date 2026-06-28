@@ -56,9 +56,9 @@ CONFIG_SCHEMA = {
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
     "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
     "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
-    "dual_wallet_entry_amount_usd": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT_USD", "type": float, "help": "每个钱包的下单金额"},
+    "dual_wallet_entry_shares": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT", "type": float, "help": "每钱包的下单 token 数量（每单固定数量，配合价格算出金额）"},
     "dual_wallet_max_consecutive_losses": {"default": 2, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MAX_CONSECUTIVE_LOSSES", "type": int, "help": "连续亏损达到该次数后停止交易"},
-    "dual_wallet_poll_interval_sec": {"default": 0.7, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": int, "help": "事件轮询间隔（秒）"},
+    "dual_wallet_poll_interval_sec": {"default": 0.1, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": int, "help": "事件轮询间隔（秒）"},
     "dual_wallet_outcome_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_INTERVAL_SEC", "type": int, "help": "事件结束后轮询最终结果的间隔（秒）"},
     "dual_wallet_outcome_poll_timeout_sec": {"default": 900, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_TIMEOUT_SEC", "type": int, "help": "等待市场最终结果的最长时间（秒）"},
     "dual_wallet_settlement_poll_interval_sec": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_INTERVAL_SEC", "type": int, "help": "等待结算时轮询钱包余额的间隔（秒）"},
@@ -174,7 +174,7 @@ def resolve_config(skill_file):
     global STRATEGY_MODE, EXECUTION_ROUTE, ORDER_TYPE
     global POLYMARKET_ACCOUNTS
     global DUAL_WALLET_ENTRY_TIMEOUT_SEC, DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC
-    global DUAL_WALLET_FIXED_SELL_PRICE, DUAL_WALLET_ENTRY_AMOUNT_USD
+    global DUAL_WALLET_FIXED_SELL_PRICE, DUAL_WALLET_ENTRY_SHARES
     global DUAL_WALLET_ENTRY_UP_PRICE, DUAL_WALLET_ENTRY_DOWN_PRICE
     global DUAL_WALLET_MAX_CONSECUTIVE_LOSSES, DUAL_WALLET_POLL_INTERVAL_SEC
     global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START
@@ -196,7 +196,7 @@ def resolve_config(skill_file):
     DUAL_WALLET_FIXED_SELL_PRICE = cfg.get("dual_wallet_fixed_sell_price", 0.76)
     DUAL_WALLET_ENTRY_UP_PRICE = cfg.get("dual_wallet_entry_up_price", 0.5)
     DUAL_WALLET_ENTRY_DOWN_PRICE = cfg.get("dual_wallet_entry_down_price", 0.5)
-    DUAL_WALLET_ENTRY_AMOUNT_USD = cfg.get("dual_wallet_entry_amount_usd", 10.0)
+    DUAL_WALLET_ENTRY_SHARES = cfg.get("dual_wallet_entry_shares", 10.0)
     DUAL_WALLET_MAX_CONSECUTIVE_LOSSES = cfg.get("dual_wallet_max_consecutive_losses", 2)
     DUAL_WALLET_POLL_INTERVAL_SEC = cfg.get("dual_wallet_poll_interval_sec", 5)
     DUAL_WALLET_EVENT_QUERY_LIMIT = cfg.get("dual_wallet_event_query_limit", 20)

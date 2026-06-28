@@ -248,7 +248,7 @@ def main():
                 clob_token_ids=clob_token_ids,
                 fee_rate_bps=int(market.get("fee_rate_bps") or 0),
                 condition_id=condition_id,
-                amount_usd=float(cfg.get("dual_wallet_entry_amount_usd", 10.0)),
+                entry_shares=float(cfg.get("dual_wallet_entry_shares", 10.0)),
                 up_price=float(cfg.get("dual_wallet_entry_up_price", 0.5)),
                 down_price=float(cfg.get("dual_wallet_entry_down_price", 0.5)),
             )

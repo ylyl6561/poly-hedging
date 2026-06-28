@@ -13,9 +13,10 @@ from datetime import datetime, timezone
 from enum import Enum
 from collections import deque
 import random
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
-from accounts import AccountContext
+if TYPE_CHECKING:
+    from accounts import AccountContext
 
 
 class WalletRole(str, Enum):

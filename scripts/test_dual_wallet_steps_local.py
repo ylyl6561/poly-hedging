@@ -106,7 +106,7 @@ def build_test_config(status_script: dict, *, entry_timeout_sec: int = 3, force_
         "dual_wallet_fixed_sell_price": 0.76,
         "dual_wallet_entry_up_price": 0.5,
         "dual_wallet_entry_down_price": 0.5,
-        "dual_wallet_entry_amount_usd": 10.0,
+        "dual_wallet_entry_shares": 10.0,
         "dual_wallet_max_consecutive_losses": 99,
         "dual_wallet_poll_interval_sec": 1,
         "dual_wallet_outcome_poll_interval_sec": 1,

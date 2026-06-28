@@ -115,7 +115,7 @@ class DualWalletEventStrategy:
         clob_token_ids: list[str],
         fee_rate_bps: int,
         condition_id: str,
-        amount_usd: float,
+        entry_shares: float,
         up_price: float,
         down_price: float,
         close_price: float = 0.0,
@@ -135,7 +135,7 @@ class DualWalletEventStrategy:
             clob_token_ids: YES/NO token IDs
             fee_rate_bps: 费率（基点）
             condition_id: 条件 ID
-            amount_usd: 挂单金额
+            entry_shares: 每钱包的下单 token 数量（固定数量，配合 up/down 价格算出 amount_usd）
             up_price: UP 方向价格
             down_price: DOWN 方向价格
             close_price: 结算价格
@@ -169,7 +169,7 @@ class DualWalletEventStrategy:
             metadata={
                 "up_price": up_price,
                 "down_price": down_price,
-                "amount_usd": amount_usd,
+                "entry_shares": entry_shares,
                 "fee_rate_bps": fee_rate_bps,
                 "close_price": close_price,
             },

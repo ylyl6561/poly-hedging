@@ -172,7 +172,7 @@ def _build_test_config(scenario: dict) -> dict:
         "dual_wallet_fixed_sell_price": 0.76,
         "dual_wallet_entry_up_price": 0.5,
         "dual_wallet_entry_down_price": 0.5,
-        "dual_wallet_entry_amount_usd": 10.0,
+        "dual_wallet_entry_shares": 10.0,
         "dual_wallet_max_consecutive_losses": 99,
         "dual_wallet_poll_interval_sec": 1,
         "dual_wallet_outcome_poll_interval_sec": 1,
@@ -414,7 +414,7 @@ def run_scenario(name: str, scenario: dict, base_run_dir: Path) -> Path:
             clob_token_ids=["fake-up-token", "fake-down-token"],
             fee_rate_bps=0,
             condition_id=event_id,
-            amount_usd=float(cfg["dual_wallet_entry_amount_usd"]),
+            entry_shares=float(cfg["dual_wallet_entry_shares"]),
             up_price=float(cfg["dual_wallet_entry_up_price"]),
             down_price=float(cfg["dual_wallet_entry_down_price"]),
         )

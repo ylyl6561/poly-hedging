@@ -819,18 +819,18 @@ def get_wallet_usdc_balance(*, account: AccountContext) -> dict:
 # 因此 ``raw_balance / 1_000_000.0`` = shares（人类可读）。
 
 _CONDITIONAL_BALANCE_PARAMS_BUILDERS = (
-    # (asset_id, signature_type) — V2 SDK 主路径
-    ("balance_allowance_v2_signature", lambda asset_id, sig: _try_build_conditional_params_v2(asset_id, sig)),
-    # 仅传 asset_id
-    ("balance_allowance_asset_only", lambda asset_id, sig: _try_build_conditional_params(asset_id, sig, with_signature=False)),
-    # 仅传 signature_type（兜底）
-    ("balance_allowance_signature_only", lambda asset_id, sig: _try_build_conditional_params(asset_id, sig, with_asset=False)),
-    # 都不传
-    ("balance_allowance_no_args", lambda asset_id, sig: ((), {})),
+    # (asset_id, signature_type, funder_address) — V2 SDK 主路径
+    ("balance_allowance_v2_signature", lambda asset_id, sig, funder: _try_build_conditional_params_v2(asset_id, sig, funder)),
+    # 仅传 asset_id + funder
+    ("balance_allowance_asset_only", lambda asset_id, sig, funder: _try_build_conditional_params(asset_id, sig, with_signature=False, funder_address=funder)),
+    # 仅传 signature_type + funder（兜底）
+    ("balance_allowance_signature_only", lambda asset_id, sig, funder: _try_build_conditional_params(asset_id, sig, with_asset=False, funder_address=funder)),
+    # 仅传 signature_type（无 asset_id 的兜底）
+    ("balance_allowance_signature_only_fallback", lambda asset_id, sig, funder: _try_build_conditional_params(asset_id, sig, with_asset=False, with_signature=True, funder_address=funder)),
 )
 
 
-def _try_build_conditional_params_v2(asset_id: str, signature_type: int):
+def _try_build_conditional_params_v2(asset_id: str, signature_type: int, funder_address: str | None = None):
     """尝试用 V2 SDK 的 BalanceAllowanceParams + AssetType.CONDITIONAL 构造参数。"""
     try:
         from py_clob_client_v2 import BalanceAllowanceParams, AssetType
@@ -849,14 +849,25 @@ def _try_build_conditional_params_v2(asset_id: str, signature_type: int):
         return None
 
 
-def _try_build_conditional_params(asset_id: str, signature_type: int, *, with_asset: bool = True, with_signature: bool = True):
-    """降级路径：用 dict 构造 asset_type=CONDITIONAL + token_id / signature_type。"""
-    params: dict = {"asset_type": "CONDITIONAL"}
-    if with_asset:
-        params["token_id"] = str(asset_id)
-    if with_signature:
-        params["signature_type"] = signature_type
-    return ((), {"params": params})
+def _try_build_conditional_params(asset_id: str, signature_type: int, *, with_asset: bool = True, with_signature: bool = True, funder_address: str | None = None):
+    """降级路径：用 BalanceAllowanceParams 构造 asset_type=CONDITIONAL + token_id / signature_type。"""
+    try:
+        from py_clob_client_v2 import BalanceAllowanceParams, AssetType
+    except ImportError:
+        try:
+            from py_clob_client_v2.clob_types import BalanceAllowanceParams, AssetType
+        except ImportError:
+            return None
+    try:
+        kwargs: dict = {
+            "asset_type": AssetType.CONDITIONAL,
+            "signature_type": signature_type,
+        }
+        if with_asset:
+            kwargs["token_id"] = str(asset_id)
+        return ((), {"params": BalanceAllowanceParams(**kwargs)})
+    except TypeError:
+        return None
 
 
 def _extract_token_balance(payload) -> float | None:
@@ -953,7 +964,7 @@ def fetch_token_balance(*, asset_id: str, account: AccountContext, mock: bool = 
 
     last_error: str | None = None
     for label, builder in _CONDITIONAL_BALANCE_PARAMS_BUILDERS:
-        built = builder(asset_id, account.signature_type)
+        built = builder(asset_id, account.signature_type, account.funder_address)
         if built is None:
             continue
         args, kwargs = built

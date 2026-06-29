@@ -147,3 +147,162 @@ def send_markdown(body: str, title: str = "通知") -> bool:
 
 def send_text(text: str, title: str = "通知") -> bool:
     return send_feishu_text(text, title=title)
+
+
+def format_force_close_message(
+    event_name: str,
+    wallet_name: str,
+    side: str,
+    shares: float,
+    price: float,
+    result: str,
+    reason: str = "",
+    is_paper: bool = False,
+) -> tuple[str, str]:
+    """格式化强平/撤单通知消息。"""
+    paper_tag = " [PAPER]" if is_paper else ""
+    side_emoji = "📈" if side.upper() == "UP" else "📉"
+
+    title = f"{side_emoji} 强平通知{paper_tag}"
+
+    body_lines = [
+        f"**事件**: {event_name}",
+        f"**钱包**: {wallet_name}",
+        f"**方向**: {side.upper()}",
+        "",
+        "**─── 强平信息 ───**",
+        f"**强平股数**: {shares:.2f}",
+        f"**强平价格**: ${price:.4f}",
+        f"**强平结果**: {result}",
+    ]
+
+    if reason:
+        body_lines.append(f"**触发原因**: {reason}")
+
+    return title, "\n".join(body_lines)
+
+
+def send_force_close_notification(
+    event_name: str,
+    wallet_name: str,
+    side: str,
+    shares: float,
+    price: float,
+    result: str,
+    reason: str = "",
+    is_paper: bool = False,
+) -> bool:
+    """发送强平通知。"""
+    if is_paper:
+        return False
+    cfg = build_config()
+    if cfg is None:
+        return False
+    title, body = format_force_close_message(
+        event_name=event_name,
+        wallet_name=wallet_name,
+        side=side,
+        shares=shares,
+        price=price,
+        result=result,
+        reason=reason,
+        is_paper=is_paper,
+    )
+    return send_feishu_message(title, body, cfg=cfg)
+
+
+def format_cancel_order_message(
+    event_name: str,
+    wallet_name: str,
+    order_type: str,
+    shares: float,
+    reason: str = "",
+    is_paper: bool = False,
+) -> tuple[str, str]:
+    """格式化撤单通知消息。"""
+    paper_tag = " [PAPER]" if is_paper else ""
+
+    title = f"⏹️ 撤单通知{paper_tag}"
+
+    body_lines = [
+        f"**事件**: {event_name}",
+        f"**钱包**: {wallet_name}",
+        f"**订单类型**: {order_type}",
+        "",
+        "**─── 撤单信息 ───**",
+        f"**撤单股数**: {shares:.2f}",
+        f"**撤单原因**: {reason}",
+    ]
+
+    return title, "\n".join(body_lines)
+
+
+def send_cancel_order_notification(
+    event_name: str,
+    wallet_name: str,
+    order_type: str,
+    shares: float,
+    reason: str = "",
+    is_paper: bool = False,
+) -> bool:
+    """发送撤单通知。"""
+    if is_paper:
+        return False
+    cfg = build_config()
+    if cfg is None:
+        return False
+    title, body = format_cancel_order_message(
+        event_name=event_name,
+        wallet_name=wallet_name,
+        order_type=order_type,
+        shares=shares,
+        reason=reason,
+        is_paper=is_paper,
+    )
+    return send_feishu_message(title, body, cfg=cfg)
+
+
+def format_close_window_message(
+    event_name: str,
+    wallets: list[dict],
+    trigger_reason: str,
+    is_paper: bool = False,
+) -> tuple[str, str]:
+    """格式化强平窗口触发通知消息。"""
+    paper_tag = " [PAPER]" if is_paper else ""
+
+    title = f"⚡ 强平窗口触发{paper_tag}"
+
+    body_lines = [
+        f"**事件**: {event_name}",
+        f"**触发原因**: {trigger_reason}",
+        "",
+        "**─── 钱包状态 ───**",
+    ]
+
+    for w in wallets:
+        status = "✅ 已对冲" if w.get("hedged") else "⚠️ 需要强平"
+        body_lines.append(f"- **{w['wallet_name']}**: {status} ({w.get('filled_shares', 0):.2f} 股 @ {w.get('side', 'N/A')})")
+
+    return title, "\n".join(body_lines)
+
+
+def send_close_window_notification(
+    event_name: str,
+    wallets: list[dict],
+    trigger_reason: str,
+    is_paper: bool = False,
+) -> bool:
+    """发送强平窗口触发通知。"""
+    if is_paper:
+        return False
+    cfg = build_config()
+    if cfg is None:
+        return False
+    title, body = format_close_window_message(
+        event_name=event_name,
+        wallets=wallets,
+        trigger_reason=trigger_reason,
+        is_paper=is_paper,
+    )
+    return send_feishu_message(title, body, cfg=cfg)

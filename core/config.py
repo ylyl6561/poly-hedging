@@ -65,7 +65,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
     "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
     "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "每轮最多检查的市场数量"},
-    "dual_wallet_min_seconds_before_start": {"default": 60, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
+    "dual_wallet_min_seconds_before_start": {"default": 30, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
     "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "是否将候选决策写入 JSONL 日志，便于回放分析"},
     "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "候选决策日志文件路径"},
     "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "结构化的 Polymarket 多账户配置"},

@@ -298,7 +298,7 @@ class TaskManagerConfig:
             poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 1)),
             entry_timeout_sec=int(config.get("dual_wallet_entry_timeout_sec", 92)),
             force_close_window_sec=int(config.get("dual_wallet_force_close_window_sec", 88)),
-            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 1)),
+            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 0.6)),
             max_consecutive_losses=int(config.get("dual_wallet_max_consecutive_losses", 2)),
             min_seconds_before_start=int(config.get("dual_wallet_min_seconds_before_start", 15)),
             outcome_poll_timeout_sec=int(config.get("dual_wallet_outcome_poll_timeout_sec", 900)),
@@ -1066,60 +1066,86 @@ class TaskManager:
             history_list = task.order_snapshots.setdefault(live_wallet.wallet_id, [])
             history_list.append(skip_snapshot)
         else:
-            sell_result = self._order_exec.place_gtc_sell_order(
-                wallet=live_wallet,
-                event_name=task.event_name,
-                side=live_side,
-                shares=actual_sell_shares,
-                price=self.config.fixed_sell_price,
-                clob_token_ids=task.clob_token_ids,
-                fee_rate_bps=fee_rate_bps,
-                condition_id=task.condition_id,
-            )
-
-            # 记录抛售单快照
-            if sell_result.snapshot:
-                sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
-                task.mark_order(sell_result.snapshot)
-
-            # 检查挂单是否成功
-            sell_success = sell_result.outcome.success
-            sell_order_id = sell_result.outcome.order_id if sell_success else None
-            sell_err = sell_result.outcome.error or "未知错误"
-
-            # 输出详细日志：包含钱包、方向、份额、价格、订单ID、是否成功
-            side_str = live_side.value if live_side else "?"
-            if sell_success:
+            # 再次检查：Polymarket CLOB 要求最小订单尺寸为 5 股
+            MIN_ORDER_SIZE = 5.0
+            if actual_sell_shares < MIN_ORDER_SIZE:
                 print(
-                    f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
-                    f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
-                    f"(balance={live_balance_shares:.4f}, filled={live_filled_shares:.4f}, order_id={sell_order_id})"
+                    f"   [跳过] [{live_wallet.wallet_name}] {live_side.value if live_side else '?'} 侧 GTC 抛售单跳过: "
+                    f"实际可卖份额 {actual_sell_shares:.4f} 股 < CLOB 最小要求 {MIN_ORDER_SIZE} 股，"
+                    f"强平窗口将直接对该侧执行 FAK 强平。"
                 )
-                TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-                TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares)
+                skip_snapshot = OrderSnapshot(
+                    wallet_id=live_wallet.wallet_id,
+                    order_id=f"skip_{int(time.time() * 1000)}",
+                    operation=OperationType.SELL,
+                    side=live_side,
+                    price=self.config.fixed_sell_price,
+                    shares=sell_shares,
+                    status=OrderStatus.SKIPPED.value,
+                    timestamp=datetime.now(timezone.utc),
+                    close_window=self.config.close_window_sec,
+                    amount_usd=0.0,
+                    filled_amount_usd=0.0,
+                    filled_shares=0.0,
+                    error=f"below_min_order_size:actual={actual_sell_shares:.4f}:min={MIN_ORDER_SIZE}",
+                )
+                history_list = task.order_snapshots.setdefault(live_wallet.wallet_id, [])
+                history_list.append(skip_snapshot)
             else:
-                # 挂单失败：记录失败原因
-                print(
-                    f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
-                    f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
-                    f"原因: {sell_err}。强平窗口将直接对该侧执行 FAK 强平。"
+                sell_result = self._order_exec.place_gtc_sell_order(
+                    wallet=live_wallet,
+                    event_name=task.event_name,
+                    side=live_side,
+                    shares=actual_sell_shares,
+                    price=self.config.fixed_sell_price,
+                    clob_token_ids=task.clob_token_ids,
+                    fee_rate_bps=fee_rate_bps,
+                    condition_id=task.condition_id,
                 )
-                TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-                TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares, sell_err)
 
-                # 诊断：如果失败原因包含 balance，打印诊断信息
-                if "balance" in sell_err.lower():
-                    try:
-                        self._diagnose_sell_balance_mismatch(
-                            task=task,
-                            wallet=live_wallet,
-                            side=live_side,
-                            shares_attempted=actual_sell_shares,
-                            price_attempted=self.config.fixed_sell_price,
-                            error_text=sell_err,
-                        )
-                    except Exception:
-                        pass
+                # 记录抛售单快照
+                if sell_result.snapshot:
+                    sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
+                    task.mark_order(sell_result.snapshot)
+
+                # 检查挂单是否成功
+                sell_success = sell_result.outcome.success
+                sell_order_id = sell_result.outcome.order_id if sell_success else None
+                sell_err = sell_result.outcome.error or "未知错误"
+
+                # 输出详细日志：包含钱包、方向、份额、价格、订单ID、是否成功
+                side_str = live_side.value if live_side else "?"
+                if sell_success:
+                    print(
+                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
+                        f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
+                        f"(balance={live_balance_shares:.4f}, filled={live_filled_shares:.4f}, order_id={sell_order_id})"
+                    )
+                    TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+                    TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares)
+                else:
+                    # 挂单失败：记录失败原因
+                    print(
+                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
+                        f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
+                        f"原因: {sell_err}。强平窗口将直接对该侧执行 FAK 强平。"
+                    )
+                    TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
+                    TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares, sell_err)
+
+                    # 诊断：如果失败原因包含 balance，打印诊断信息
+                    if "balance" in sell_err.lower():
+                        try:
+                            self._diagnose_sell_balance_mismatch(
+                                task=task,
+                                wallet=live_wallet,
+                                side=live_side,
+                                shares_attempted=actual_sell_shares,
+                                price_attempted=self.config.fixed_sell_price,
+                                error_text=sell_err,
+                            )
+                        except Exception:
+                            pass
 
         # 打印 stale 侧状态（用于调试）
         stale_order = task.get_order(stale_wallet.wallet_id)
@@ -1775,6 +1801,7 @@ class TaskManager:
                             print(f"   🗑️ {wallet_name}: 取消现有 GTC 抛售单")
 
                     # FAK 强平前检查余额，取 min(entry_filled_shares, balance)
+                    MIN_ORDER_SIZE = 5.0
                     actual_close_shares = entry_filled_shares
                     if live_token_id and not getattr(self.config, "dry_run", False):
                         balance_resp = fetch_token_balance(
@@ -1784,8 +1811,11 @@ class TaskManager:
                         )
                         live_balance = balance_resp.get("balance_shares") or 0
                         actual_close_shares = min(entry_filled_shares, live_balance)
-                        if live_balance < entry_filled_shares:
-                            print(f"   [FAK余额检查] {wallet_name} {close_side.value}侧: balance={live_balance:.4f} < filled={entry_filled_shares:.4f}, 使用 {actual_close_shares:.4f}")
+                        if actual_close_shares < MIN_ORDER_SIZE:
+                            print(f"   [FAK跳过] {wallet_name} {close_side.value}侧: 可平份额 {actual_close_shares:.4f} < CLOB最小{MIN_ORDER_SIZE}，跳过")
+                            # 记录跳过并继续处理下一个钱包
+                            TradeLogger.force_close(task.event_name, wallet_name, close_side.value, "$0.00", "跳过(不足最小尺寸)")
+                            continue
 
                     # 执行 FAK 强平
                     print(f"   🔄 {wallet_name}: 执行 FAK 强平 {actual_close_shares:.2f} @ {close_side.value}")
@@ -1844,7 +1874,25 @@ class TaskManager:
 
             if not should_fak:
                 reason = "抛售单已成交" if any_sell_filled else ("成交份额=0" if entry_filled_shares <= 0 else "当前挂单是 SELL 抛售单")
-                print(f"   ⏭️ {wallet_name}: {reason}，只撤单不 FAK 强平")
+                # 即使不执行 FAK 强平，如果有未成交的 PLACE 挂单，也要先撤单
+                if is_entry_order and order and order.order_id and order.status == OrderStatus.SUBMITTED.value:
+                    self._order_exec.cancel_order(
+                        order_id=order.order_id,
+                        wallet=wallet,
+                        event_name=task.event_name,
+                        side=order.side,
+                        amount_usd=order.amount_usd,
+                    )
+                    print(f"   🗑️ {wallet_name}: 强平窗口-取消 PLACE 挂单 (reason={reason})")
+                    send_cancel_order_notification(
+                        event_name=task.event_name,
+                        wallet_name=wallet_name,
+                        order_type="PLACE挂单",
+                        shares=float(order.shares or 0),
+                        reason=f"强平窗口触发: {reason}",
+                        is_paper=self._is_paper,
+                    )
+                print(f"   ⏭️ {wallet_name}: {reason}，跳过 FAK 强平")
                 continue
 
             # 执行 FAK 强平：先取消现有的 PLACE 挂单

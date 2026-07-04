@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def main():
     """模拟：CLOB 返回 status=filled，filled_shares=None"""
     from strategy.dual_wallet_executor import ExecutionOutcome
+    from strategy.status import normalize_clob_status
 
     # 模拟场景1：SDK 在 raw 里填 status=filled，但 filled_shares 字段为 None
     # （这是 py_clob_client_v2 实际行为：GET /orders/{id} 的响应字段不直接是 filled_shares）
@@ -79,12 +80,7 @@ def main():
     print(f"  CLOB raw status = {raw_status!r}")
 
     # 模拟 _refresh_order_statuses 里的 status 归一化
-    normalized = {
-        "live": "submitted", "open": "submitted", "pending": "submitted",
-        "matched": "filled", "filled": "filled", "executed": "filled",
-        "cancelled": "cancelled", "canceled": "cancelled",
-        "failed": "failed", "rejected": "failed",
-    }.get(raw_status, raw_status)
+    normalized = normalize_clob_status(raw_status)
     print(f"  normalized_status = {normalized!r}")
     snapshot_a.status = normalized
 

@@ -27,6 +27,7 @@ from strategy.dual_wallet_models import (
     WalletIdentity,
 )
 from strategy.event_task import coalesce_filled_shares
+from strategy.status import CLOB_FILLED_STATUSES
 
 
 class ExecutionOutcome:
@@ -45,6 +46,7 @@ class ExecutionOutcome:
         error: str | None = None,
         note: str | None = None,
         raw: Any = None,
+        created_at: str | None = None,
     ):
         self.success = success
         self.order_id = order_id
@@ -57,6 +59,7 @@ class ExecutionOutcome:
         self.error = error
         self.note = note
         self.raw = raw
+        self.created_at = created_at  # 链上订单创建时间
 
 
 class OrderExecutorProtocol(Protocol):
@@ -360,18 +363,20 @@ class OrderExecutorV2:
             status = str(raw.get("status") or "").lower()
 
             # 归一化状态
-            normalized_status = {
-                "live": OrderStatus.SUBMITTED.value,
-                "open": OrderStatus.SUBMITTED.value,
-                "pending": OrderStatus.SUBMITTED.value,
-                "matched": OrderStatus.FILLED.value,
-                "filled": OrderStatus.FILLED.value,
-                "executed": OrderStatus.FILLED.value,
-                "cancelled": OrderStatus.CANCELLED.value,
-                "canceled": OrderStatus.CANCELLED.value,
-                "failed": OrderStatus.FAILED.value,
-                "rejected": OrderStatus.FAILED.value,
-            }.get(status, status)
+            from strategy.status import normalize_clob_status
+            normalized_status = normalize_clob_status(status)
+
+            # 【修复说明】
+            # 问题：OrderSnapshot.timestamp 使用本地时间而非链上时间
+            # 修复：优先使用 API 返回的链上 created_at 时间
+            timestamp = datetime.now(timezone.utc)
+            if outcome.created_at:
+                try:
+                    # API 返回的是 ISO 格式字符串
+                    timestamp = datetime.fromisoformat(outcome.created_at.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    # 解析失败，使用本地时间
+                    pass
 
             snapshot = OrderSnapshot(
                 wallet=wallet,
@@ -387,6 +392,7 @@ class OrderExecutorV2:
                 filled_amount_usd=outcome.filled_amount_usd,
                 average_fill_price=outcome.average_fill_price,
                 error=outcome.error,
+                timestamp=timestamp,  # 使用链上时间
             )
 
         return outcome, snapshot
@@ -494,7 +500,7 @@ class OrderExecutorV2:
             )
             if refresh_outcome.success and isinstance(refresh_outcome.raw, dict):
                 latest_status = str(refresh_outcome.raw.get("status") or "").lower()
-                if latest_status in {"matched", "filled", "executed"}:
+                if latest_status in CLOB_FILLED_STATUSES:
                     # 订单实际已成交，视为撤单成功
                     cancel_refresh_result = OrderOperationResult(
                         outcome=ExecutionOutcome(

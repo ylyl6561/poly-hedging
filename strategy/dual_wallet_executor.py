@@ -33,6 +33,7 @@ class ExecutionOutcome:
     error: str | None = None
     note: str | None = None
     raw: dict[str, Any] | None = None
+    created_at: str | None = None  # 订单创建时间（ISO格式）
 
 
 class DualWalletExecutor:
@@ -153,6 +154,7 @@ class DualWalletExecutor:
                 filled_shares=coalesce_filled_shares(raw_filled, raw_shares),
                 average_fill_price=scripted.get("average_fill_price") or scripted.get("price"),
                 raw_status=scripted.get("raw_status"),
+                created_at=scripted.get("created_at"),
                 raw=scripted,
             )
         result = fetch_order_status(order_id, mock=self.dry_run, account=wallet.account if wallet else None)
@@ -169,6 +171,7 @@ class DualWalletExecutor:
                 filled_shares=coalesce_filled_shares(raw_filled, raw_shares),
                 average_fill_price=result.get("average_fill_price") or result.get("price"),
                 raw_status=result.get("raw_status"),
+                created_at=result.get("created_at"),
                 raw=result,
             )
         return ExecutionOutcome(success=False, order_id=order_id, error=(result or {}).get("error") if isinstance(result, dict) else str(result), raw=result if isinstance(result, dict) else None)

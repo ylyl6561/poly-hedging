@@ -1707,8 +1707,217 @@ def cancel_order(order_id: str, *, account: AccountContext, mock: bool = False) 
         return {"success": False, "error": f"cancel_order_error: {e}"}
 
 
-def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = False) -> dict:
+def fetch_order_trades(order_id: str, *, account: AccountContext, mock: bool = False) -> dict:
+    """批量查询订单的所有成交明细（使用线程池并发获取）。
+
+    1. 获取订单详情
+    2. 提取 associate_trades 列表
+    3. 使用线程池并发查询每一笔成交的详细时间
+
+    Args:
+        order_id: 订单ID
+        account: 账户上下文
+        mock: 是否为模拟模式
+
+    Returns:
+        {
+            "success": bool,
+            "order_id": str,
+            "trades": [  # 按时间排序的成交列表
+                {
+                    "trade_id": str,
+                    "timestamp": str,      # ISO格式
+                    "size": float,
+                    "price": float,
+                    "side": str,
+                    "fee": float | None,
+                    "raw": dict,
+                },
+                ...
+            ],
+            "first_trade_at": str | None,  # ISO格式
+            "last_trade_at": str | None,   # ISO格式
+            "total_filled_size": float,
+            "error": str | None,
+        }
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if not order_id:
+        return {"success": False, "order_id": order_id, "error": "missing_order_id"}
+
+    if mock or order_id.startswith("DRY-"):
+        return {
+            "success": True,
+            "order_id": order_id,
+            "trades": [],
+            "first_trade_at": None,
+            "last_trade_at": None,
+            "total_filled_size": 0.0,
+        }
+
+    try:
+        client = get_direct_clob_client(account=account)
+
+        # 1. 获取订单详情
+        order_info = client.get_order(order_id)
+        if not isinstance(order_info, dict):
+            return {"success": False, "order_id": order_id, "error": f"unexpected_response:{order_info}"}
+
+        # 2. 提取成交 ID 列表
+        trade_ids = order_info.get("associate_trades") or []
+        if not trade_ids:
+            return {
+                "success": True,
+                "order_id": order_id,
+                "trades": [],
+                "first_trade_at": None,
+                "last_trade_at": None,
+                "total_filled_size": 0.0,
+            }
+
+        # 3. 使用线程池并发查询每一笔成交
+        def _fetch_single_trade(trade_id: str) -> dict | None:
+            try:
+                from py_clob_client.v2.clob import TradeParams
+                trade_detail = client.get_trades(TradeParams(id=trade_id))
+                if isinstance(trade_detail, dict):
+                    return trade_detail
+                elif isinstance(trade_detail, list) and trade_detail:
+                    return trade_detail[0]
+                return None
+            except Exception:
+                return None
+
+        trades_with_details: list[dict] = []
+        max_workers = min(len(trade_ids), 8)
+
+        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="trade-fetch") as pool:
+            futures = {pool.submit(_fetch_single_trade, tid): tid for tid in trade_ids}
+            for fut in as_completed(futures):
+                result = fut.result()
+                if result:
+                    trades_with_details.append(result)
+
+        # 4. 解析并排序
+        parsed_trades = []
+        for trade in trades_with_details:
+            ts = trade.get("timestamp") or trade.get("time") or trade.get("created_at")
+            size = trade.get("size") or trade.get("filled_size") or trade.get("amount")
+            price = trade.get("price") or trade.get("fill_price")
+            side = trade.get("side")
+            fee = trade.get("fee") or trade.get("fee_amount")
+
+            ts_float = None
+            if ts is not None:
+                try:
+                    ts_float = float(ts)
+                    if ts_float > 1e12:
+                        ts_float = ts_float / 1000.0
+                except (TypeError, ValueError):
+                    pass
+
+            parsed_trades.append({
+                "trade_id": trade.get("trade_id") or trade.get("id"),
+                "timestamp": ts,
+                "timestamp_float": ts_float,
+                "size": float(size) if size is not None else None,
+                "price": float(price) if price is not None else None,
+                "side": side,
+                "fee": float(fee) if fee is not None else None,
+                "raw": trade,
+            })
+
+        # 按时间排序
+        parsed_trades.sort(key=lambda x: x.get("timestamp_float") or 0)
+
+        # 5. 计算汇总
+        total_filled = sum(t.get("size") or 0 for t in parsed_trades if t.get("size"))
+
+        # 提取时间（转换为 ISO 格式）
+        from datetime import datetime, timezone
+        first_ts = None
+        last_ts = None
+
+        for t in parsed_trades:
+            tf = t.get("timestamp_float")
+            if tf is not None:
+                if first_ts is None or tf < first_ts:
+                    first_ts = tf
+                if last_ts is None or tf > last_ts:
+                    last_ts = tf
+
+        first_trade_at = datetime.fromtimestamp(first_ts, tz=timezone.utc).isoformat() if first_ts else None
+        last_trade_at = datetime.fromtimestamp(last_ts, tz=timezone.utc).isoformat() if last_ts else None
+
+        # 清理输出（移除内部字段）
+        for t in parsed_trades:
+            t.pop("timestamp_float", None)
+
+        return {
+            "success": True,
+            "order_id": order_id,
+            "trades": parsed_trades,
+            "first_trade_at": first_trade_at,
+            "last_trade_at": last_trade_at,
+            "total_filled_size": total_filled,
+        }
+
+    except Exception as e:
+        err_str = str(e)
+        err_lower = err_str.lower()
+
+        transient_markers = (
+            "request exception", "connection", "timeout", "timed out",
+            "network", "read timed out", "connect timed out",
+            "503", "502", "504",
+        )
+        if any(marker in err_lower for marker in transient_markers):
+            return {"success": False, "order_id": order_id, "error": f"transient_error:{err_str[:200]}", "retryable": True}
+
+        return {"success": False, "order_id": order_id, "error": f"fetch_order_trades_error:{err_str[:200]}"}
+
+
+def _is_transient_exception(e: Exception) -> bool:
+    """判断异常是否为临时性网络错误。"""
+    err_type = type(e).__name__.lower()
+    err_msg = str(e).lower()
+
+    # Polymarket SDK 的网络异常
+    if "polyapiexception" in err_type or "polyapiexception" in err_msg:
+        return True
+
+    # urllib 网络错误
+    transient_types = ("httperror", "urlerror", "timeouterror", "connectionerror")
+    if any(t in err_type for t in transient_types):
+        return True
+
+    # 字符串匹配兜底
+    transient_markers = (
+        "request exception", "connection", "timeout", "timed out",
+        "network", "read timed out", "connect timed out",
+        "503", "502", "504",
+    )
+    return any(m in err_msg for m in transient_markers)
+
+
+def _is_benign_exception(e: Exception) -> bool:
+    """判断异常是否为业务层面的良性错误。"""
+    err_msg = str(e).lower()
+    benign_markers = (
+        "order not found", "not found",
+        "already matched", "already matched or canceled",
+        "already canceled", "already cancelled", "already cancelled or matched",
+        "order is not active", "not active", "no open order", "no matching order",
+        "market closed", "market resolved", "expired",
+    )
+    return any(m in err_msg for m in benign_markers)
+
+
+def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = False, _retry: int = 0) -> dict:
     """Fetch current CLOB order status with best-effort normalization."""
+    MAX_RETRIES = 3
+
     if not order_id:
         return {"success": False, "error": "missing_order_id"}
 
@@ -1721,21 +1930,11 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
         if not isinstance(result, dict):
             return {"success": False, "order_id": order_id, "error": f"unexpected_order_status_response:{result}"}
 
-        status = str(result.get("status") or result.get("order_status") or "").lower()
-        normalized_status = {
-            "live": "submitted",
-            "open": "submitted",
-            "pending": "submitted",
-            "matched": "filled",
-            "filled": "filled",
-            "executed": "filled",
-            "cancelled": "cancelled",
-            "canceled": "cancelled",
-            "failed": "failed",
-            "rejected": "failed",
-        }.get(status, status or "submitted")
+        status = str(result.get("status") or "").lower()
+        from strategy.status import normalize_clob_status
+        normalized_status = normalize_clob_status(status)
 
-        size_matched = result.get("size_matched") or result.get("filled_size") or result.get("matched_size")
+        size_matched = result.get("size_matched")
         created_price = result.get("price")
         average_fill_price = _extract_fill_price(result)
         filled_amount_usd = None
@@ -1744,6 +1943,9 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
                 filled_amount_usd = float(size_matched) * float(average_fill_price)
         except (TypeError, ValueError):
             filled_amount_usd = None
+
+        created_at = result.get("created_at")
+
         return {
             "success": True,
             "order_id": order_id,
@@ -1754,18 +1956,24 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
             "filled_shares": size_matched,
             "average_fill_price": average_fill_price,
             "filled_amount_usd": filled_amount_usd,
+            "created_at": created_at,
             "raw": result,
         }
     except Exception as e:
         err_str = str(e)
-        err_lower = err_str.lower()
-        benign_markers = (
-            "order not found", "not found",
-            "already matched", "already matched or canceled",
-            "already canceled", "already cancelled", "already cancelled or matched",
-            "order is not active", "not active", "no open order", "no matching order",
-            "market closed", "market resolved", "expired",
-        )
-        if any(marker in err_lower for marker in benign_markers):
+        err_type = type(e).__name__
+
+        # 业务层面的良性错误：按"已取消"处理
+        if _is_benign_exception(e):
             return {"success": True, "order_id": order_id, "status": "cancelled", "note": f"benign_status:{err_str[:200]}"}
-        return {"success": False, "order_id": order_id, "error": f"fetch_order_status_error: {e}"}
+
+        # 临时性网络错误：指数退避重试
+        if _is_transient_exception(e) and _retry < MAX_RETRIES:
+            wait_sec = 0.5 * (2 ** _retry)
+            print(f"   ⚠️ [fetch_order_status] transient_error order_id={order_id} retry={_retry+1}/{MAX_RETRIES} wait={wait_sec}s: {err_type} {err_str[:120]}")
+            time.sleep(wait_sec)
+            return fetch_order_status(order_id, account=account, mock=mock, _retry=_retry + 1)
+
+        # 重试耗尽或非临时错误：打印并返回错误
+        print(f"   ⚠️ [fetch_order_status] failed order_id={order_id} after {_retry} retries: {err_type} {err_str[:150]}")
+        return {"success": False, "order_id": order_id, "error": f"fetch_order_status_error:{err_str[:200]}"}

@@ -33,12 +33,11 @@ STATUS_FAILED = "failed"
 
 ACCEPTED_STATUSES = {STATUS_SUBMITTED, STATUS_FILLED, STATUS_CANCELLED, STATUS_FAILED}
 
-NORMALIZED = {
-    "live": STATUS_SUBMITTED, "open": STATUS_SUBMITTED, "pending": STATUS_SUBMITTED,
-    "matched": STATUS_FILLED, "filled": STATUS_FILLED, "executed": STATUS_FILLED,
-    "cancelled": STATUS_CANCELLED, "canceled": STATUS_CANCELLED,
-    "failed": STATUS_FAILED, "rejected": STATUS_FAILED,
-}
+# 从统一模块导入（测试文件复刻映射逻辑是为了保持测试独立性）
+from strategy.status import normalize_clob_status, CLOB_STATUS_MAP
+
+# 兼容旧代码：NORMALIZED = CLOB_STATUS_MAP（保持外部引用兼容）
+NORMALIZED = CLOB_STATUS_MAP
 
 
 # === Mock Outcome（对应 ExecutionOutcome 形状）===

@@ -54,6 +54,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_entry_timeout_sec": {"default": 120, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
     "dual_wallet_force_close_window_sec": {"default": 50, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
+    "dual_wallet_fak_close_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FAK_CLOSE_PRICE", "type": float, "help": "双边同时成交后 FAK 强平价格（0-1，建议 0.99）"},
     "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
     "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
     "dual_wallet_entry_shares": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT", "type": float, "help": "每钱包的下单 token 数量（每单固定数量，配合价格算出金额）"},

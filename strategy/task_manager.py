@@ -595,6 +595,14 @@ class TaskManager:
         """
         just_completed: list[EventTask] = []
 
+        # 每 10 秒打印一次活跃 task 数，用于诊断 API 调用频率
+        if not hasattr(self, "_last_task_count_log"):
+            self._last_task_count_log = 0.0
+        now = time.monotonic()
+        if now - self._last_task_count_log >= 10.0:
+            self._last_task_count_log = now
+            print(f"   [活跃任务] {len(self.active_tasks)} 个 task")
+
         # 遍历所有活跃任务
         for task in list(self.active_tasks):
             # 根据当前状态执行对应的处理逻辑
@@ -1181,6 +1189,19 @@ class TaskManager:
         # 刷新订单状态
         self._refresh_order_statuses(task)
 
+        # 获取所有钱包的 USDC 余额（用于飞书通知）
+        wallet_balances: dict[str, float] = {}
+        for wallet in task.wallets:
+            try:
+                payload = get_wallet_usdc_balance(account=wallet.account)
+                if isinstance(payload, dict) and payload.get("success"):
+                    balance = payload.get("balance_usdc", 0)
+                    wallet_balances[wallet.wallet_name] = float(balance) if balance else 0.0
+                else:
+                    wallet_balances[wallet.wallet_name] = 0.0
+            except Exception:
+                wallet_balances[wallet.wallet_name] = 0.0
+
         end_time_utc = task.end_time
         if end_time_utc.tzinfo is None:
             end_time_utc = end_time_utc.astimezone(timezone.utc)
@@ -1249,6 +1270,20 @@ class TaskManager:
 
             if wallets_needing_fak:
                 print(f"   [FAK强平] 检测到 {len(wallets_needing_fak)} 个仓位需要强平")
+
+                # 获取所有钱包的 USDC 余额
+                wallet_balances: dict[str, float] = {}
+                for wallet in task.wallets:
+                    try:
+                        payload = get_wallet_usdc_balance(account=wallet.account)
+                        if isinstance(payload, dict) and payload.get("success"):
+                            balance = payload.get("balance_usdc", 0)
+                            wallet_balances[wallet.wallet_name] = float(balance) if balance else 0.0
+                        else:
+                            wallet_balances[wallet.wallet_name] = 0.0
+                    except Exception:
+                        wallet_balances[wallet.wallet_name] = 0.0
+
                 for wallet, side, shares in wallets_needing_fak:
                     print(f"      {wallet.wallet_name} {side.value}: {shares:.4f} @ {fak_price:.4f}")
                     result = self._order_exec.execute_force_close(
@@ -1274,6 +1309,7 @@ class TaskManager:
                         close_price=fak_price,
                         result=result_str,
                         is_paper=self._is_paper,
+                        wallet_balances=wallet_balances,
                     )
             else:
                 print("   ℹ️ 所有仓位均已对冲，无需 FAK")
@@ -1316,6 +1352,7 @@ class TaskManager:
                     shares=float(live_order.shares or 0) if live_order else 0,
                     reason=f"{stale_wallet.wallet_name} 原始挂单先成交",
                     is_paper=self._is_paper,
+                    wallet_balances=wallet_balances,
                 )
 
             task.trigger_reason = "stale_order_filled_first"
@@ -1357,6 +1394,7 @@ class TaskManager:
                     shares=float(stale_order.shares or 0) if stale_order else 0,
                     reason=f"{live_wallet.wallet_name} 抛售单先成交",
                     is_paper=self._is_paper,
+                    wallet_balances=wallet_balances,
                 )
 
             # live 侧 sell 已成交，无需 FAK
@@ -1520,6 +1558,19 @@ class TaskManager:
             print(f"      [{wallet.wallet_name}] 取消 entry 挂单: {status_str}")
             TradeLogger.order_cancelled(wallet.wallet_name, "entry_timeout 取消")
 
+            # 获取钱包余额用于通知
+            wallet_balances_cancel: dict[str, float] = {}
+            for w in task.wallets:
+                try:
+                    payload = get_wallet_usdc_balance(account=w.account)
+                    if isinstance(payload, dict) and payload.get("success"):
+                        balance = payload.get("balance_usdc", 0)
+                        wallet_balances_cancel[w.wallet_name] = float(balance) if balance else 0.0
+                    else:
+                        wallet_balances_cancel[w.wallet_name] = 0.0
+                except Exception:
+                    wallet_balances_cancel[w.wallet_name] = 0.0
+
             # 发送飞书通知：挂单超时取消
             send_cancel_order_notification(
                 event_name=task.event_name,
@@ -1528,6 +1579,7 @@ class TaskManager:
                 shares=float(order.shares or 0),
                 reason="等待成交超时（entry_timeout）",
                 is_paper=self._is_paper,
+                wallet_balances=wallet_balances_cancel,
             )
 
     # 同一 task 在 MIN_REFRESH_INTERVAL_SEC 内的重复调用直接早返回。
@@ -1555,8 +1607,7 @@ class TaskManager:
         last_refresh = getattr(task, "_last_refresh_time", 0.0)
         if now_mono - last_refresh < self.MIN_REFRESH_INTERVAL_SEC:
             return
-        task._last_refresh_time = now_mono
-
+        # 不在这里更新 _last_refresh_time，等 API 成功后再更新
         now_str = datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
         # ===== 第 1 步：按 wallet 收集"待刷新"的订单快照（保留原过滤逻辑）=====
@@ -1573,6 +1624,8 @@ class TaskManager:
             pending.append((wallet, snapshot))
 
         if not pending:
+            # 没有待刷新订单，但仍更新 throttle 时间戳
+            task._last_refresh_time = time.monotonic()
             return
 
         # ===== 第 2 步：并发执行 fetch_order_status =====
@@ -1663,6 +1716,10 @@ class TaskManager:
                 op_type = snapshot.operation.value if hasattr(snapshot.operation, 'value') else str(snapshot.operation)
                 print(f"[{now_str}] [订单状态变化] {wallet.wallet_name} | 操作={op_type} | {prev_status} → {new_status} | order_id={snapshot.order_id[:16]}...")
 
+        # API 调用全部成功后才更新 throttle 时间戳，失败时不重置
+        # 这样 API 不稳定时重试仍遵守 250ms 节流，避免连击触发限流
+        task._last_refresh_time = time.monotonic()
+
     def _execute_force_close(self, task: EventTask) -> None:
         """执行强平。"""
         close_window_sec = task.close_window_sec
@@ -1696,6 +1753,20 @@ class TaskManager:
 
         # 发送飞书通知：强平窗口触发
         wallet_statuses = []
+
+        # 获取所有钱包的 USDC 余额
+        wallet_balances: dict[str, float] = {}
+        for w in task.wallets:
+            try:
+                payload = get_wallet_usdc_balance(account=w.account)
+                if isinstance(payload, dict) and payload.get("success"):
+                    balance = payload.get("balance_usdc", 0)
+                    wallet_balances[w.wallet_name] = float(balance) if balance else 0.0
+                else:
+                    wallet_balances[w.wallet_name] = 0.0
+            except Exception:
+                wallet_balances[w.wallet_name] = 0.0
+
         for w in task.wallets:
             entry_shares = entry_filled_by_wallet.get(w.wallet_id, 0.0)
             sell_filled = sell_order_filled_by_wallet.get(w.wallet_id, False)
@@ -1711,6 +1782,7 @@ class TaskManager:
             wallets=wallet_statuses,
             trigger_reason=task.trigger_reason or "强平窗口到期",
             is_paper=self._is_paper,
+            wallet_balances=wallet_balances,
         )
 
         fee_rate_bps = task.metadata.get("fee_rate_bps", 0)
@@ -1781,6 +1853,7 @@ class TaskManager:
                     shares=float(order.shares or 0),
                     reason="强平窗口触发，清理未成交订单",
                     is_paper=self._is_paper,
+                    wallet_balances=wallet_balances,
                 )
 
                 # 撤单后检查实际状态
@@ -1869,6 +1942,7 @@ class TaskManager:
                         result=result_str,
                         reason="抛售单未成交，强平窗口触发",
                         is_paper=self._is_paper,
+                        wallet_balances=wallet_balances,
                     )
                 else:
                     # entry 无仓位或已对冲，只需清理抛售单
@@ -1915,6 +1989,7 @@ class TaskManager:
                         shares=float(order.shares or 0),
                         reason=f"强平窗口触发: {reason}",
                         is_paper=self._is_paper,
+                        wallet_balances=wallet_balances,
                     )
                 print(f"   ⏭️ {wallet_name}: {reason}，跳过 FAK 强平")
                 continue
@@ -1938,6 +2013,7 @@ class TaskManager:
                     shares=float(order.shares or 0),
                     reason="强平窗口触发，清理未成交订单",
                     is_paper=self._is_paper,
+                    wallet_balances=wallet_balances,
                 )
 
             side = order.side if order else OrderSide.UP
@@ -1973,6 +2049,7 @@ class TaskManager:
                 result=result_str,
                 reason="强平窗口触发",
                 is_paper=self._is_paper,
+                wallet_balances=wallet_balances,
             )
 
     # ===== 完成处理 =====
@@ -2088,11 +2165,11 @@ class TaskManager:
             dry_run=self.dry_run,
         )
 
-        # 发送飞书通知（只在真正交易时发送）
-        if self.config.enable_feishu and self._has_actual_trades(task):
+        # 发送飞书通知（只在有 FAK 强平操作时发送）
+        if self.config.enable_feishu and self._has_fak_operation(task):
             try:
                 # 格式化飞书消息
-                emoji = "✅" if task.is_profit else "❌"
+                emoji = "⚡" if task.is_profit else "⚠️"
                 pnl_sign = "+" if task.is_profit else "-"
                 outcome_icon = "📊 YES" if task.outcome == EventOutcome.YES else "📊 NO" if task.outcome == EventOutcome.NO else "📊 ?"
 
@@ -2118,7 +2195,7 @@ class TaskManager:
 ⚠️ 连续亏损: {self._loss_window.consecutive_losses()} / {self.config.max_consecutive_losses}"""
 
                 send_feishu(
-                    title=f"{emoji} 事件结束 | {task.event_name}",
+                    title=f"{emoji} FAK强平 | {task.event_name}",
                     content=content,
                     level="success" if task.is_profit else "warn",
                 )
@@ -2134,6 +2211,14 @@ class TaskManager:
                     OperationType.SELL,
                     OperationType.FORCE_CLOSE
                 }:
+                    return True
+        return False
+
+    def _has_fak_operation(self, task: EventTask) -> bool:
+        """检查是否有 FAK 强平操作。"""
+        for wallet_id, history in task.order_snapshots.items():
+            for snapshot in history:
+                if snapshot.operation == OperationType.FORCE_CLOSE:
                     return True
         return False
 

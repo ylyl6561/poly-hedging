@@ -158,6 +158,7 @@ def format_force_close_message(
     result: str,
     reason: str = "",
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> tuple[str, str]:
     """格式化强平/撤单通知消息。"""
     paper_tag = " [PAPER]" if is_paper else ""
@@ -179,6 +180,13 @@ def format_force_close_message(
     if reason:
         body_lines.append(f"**触发原因**: {reason}")
 
+    # 添加账户资金情况
+    if wallet_balances:
+        body_lines.append("")
+        body_lines.append("**─── 账户资金 ───**")
+        for name, balance in wallet_balances.items():
+            body_lines.append(f"**{name}**: ${balance:.4f}")
+
     return title, "\n".join(body_lines)
 
 
@@ -191,6 +199,7 @@ def send_force_close_notification(
     result: str,
     reason: str = "",
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> bool:
     """发送强平通知。"""
     if is_paper:
@@ -207,6 +216,7 @@ def send_force_close_notification(
         result=result,
         reason=reason,
         is_paper=is_paper,
+        wallet_balances=wallet_balances,
     )
     return send_feishu_message(title, body, cfg=cfg)
 
@@ -218,6 +228,7 @@ def format_cancel_order_message(
     shares: float,
     reason: str = "",
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> tuple[str, str]:
     """格式化撤单通知消息。"""
     paper_tag = " [PAPER]" if is_paper else ""
@@ -234,6 +245,13 @@ def format_cancel_order_message(
         f"**撤单原因**: {reason}",
     ]
 
+    # 添加账户资金情况
+    if wallet_balances:
+        body_lines.append("")
+        body_lines.append("**─── 账户资金 ───**")
+        for name, balance in wallet_balances.items():
+            body_lines.append(f"**{name}**: ${balance:.4f}")
+
     return title, "\n".join(body_lines)
 
 
@@ -244,6 +262,7 @@ def send_cancel_order_notification(
     shares: float,
     reason: str = "",
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> bool:
     """发送撤单通知。"""
     if is_paper:
@@ -258,6 +277,7 @@ def send_cancel_order_notification(
         shares=shares,
         reason=reason,
         is_paper=is_paper,
+        wallet_balances=wallet_balances,
     )
     return send_feishu_message(title, body, cfg=cfg)
 
@@ -267,6 +287,7 @@ def format_close_window_message(
     wallets: list[dict],
     trigger_reason: str,
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> tuple[str, str]:
     """格式化强平窗口触发通知消息。"""
     paper_tag = " [PAPER]" if is_paper else ""
@@ -282,7 +303,9 @@ def format_close_window_message(
 
     for w in wallets:
         status = "✅ 已对冲" if w.get("hedged") else "⚠️ 需要强平"
-        body_lines.append(f"- **{w['wallet_name']}**: {status} ({w.get('filled_shares', 0):.2f} 股 @ {w.get('side', 'N/A')})")
+        balance = wallet_balances.get(w["wallet_name"]) if wallet_balances else None
+        balance_str = f" | 余额: ${balance:.4f}" if balance is not None else ""
+        body_lines.append(f"- **{w['wallet_name']}**: {status} ({w.get('filled_shares', 0):.2f} 股 @ {w.get('side', 'N/A')}){balance_str}")
 
     return title, "\n".join(body_lines)
 
@@ -292,6 +315,7 @@ def send_close_window_notification(
     wallets: list[dict],
     trigger_reason: str,
     is_paper: bool = False,
+    wallet_balances: dict[str, float] | None = None,
 ) -> bool:
     """发送强平窗口触发通知。"""
     if is_paper:
@@ -304,5 +328,6 @@ def send_close_window_notification(
         wallets=wallets,
         trigger_reason=trigger_reason,
         is_paper=is_paper,
+        wallet_balances=wallet_balances,
     )
     return send_feishu_message(title, body, cfg=cfg)

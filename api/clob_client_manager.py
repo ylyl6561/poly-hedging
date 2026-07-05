@@ -46,6 +46,13 @@ class ClobClientManager:
             except ImportError as exc:
                 raise RuntimeError("py-clob-client-v2 is required for direct Polymarket CLOB trading") from exc
 
+            try:
+                import httpx
+                from py_clob_client_v2.http_helpers import helpers as clob_helpers
+                clob_helpers.timeout = httpx.Timeout(30.0)
+            except Exception:
+                pass  # 如果 SDK 结构变化，忽略错误继续运行
+
             client = ClobClient(
                 account.host,
                 key=account.private_key,
@@ -53,6 +60,7 @@ class ClobClientManager:
                 signature_type=account.signature_type,
                 funder=account.funder_address,
             )
+
             creds = call_with_optional_stderr_suppression(client.create_or_derive_api_key)
             client.set_api_creds(creds)
             now = time.time()

@@ -13,6 +13,7 @@ import sys
 import json
 import time
 import io
+from datetime import datetime, timezone
 from contextlib import redirect_stderr
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
@@ -1970,10 +1971,17 @@ def fetch_order_status(order_id: str, *, account: AccountContext, mock: bool = F
         # 临时性网络错误：指数退避重试
         if _is_transient_exception(e) and _retry < MAX_RETRIES:
             wait_sec = 0.5 * (2 ** _retry)
-            print(f"   ⚠️ [fetch_order_status] transient_error order_id={order_id} retry={_retry+1}/{MAX_RETRIES} wait={wait_sec}s: {err_type} {err_str[:120]}")
+            # 连续 2 次异常才打印警告（第 1 次不打印，避免刷屏）
+            if _retry >= 1:
+                ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                print(f"   ⚠️ [{ts}] transient_error order_id={order_id} retry={_retry+1}/{MAX_RETRIES} wait={wait_sec}s: {err_type} {err_str[:120]}")
             time.sleep(wait_sec)
             return fetch_order_status(order_id, account=account, mock=mock, _retry=_retry + 1)
 
         # 重试耗尽或非临时错误：打印并返回错误
-        print(f"   ⚠️ [fetch_order_status] failed order_id={order_id} after {_retry} retries: {err_type} {err_str[:150]}")
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        import traceback as tb
+        tb_str = tb.format_exc()
+        print(f"   ⚠️ [{ts}] failed order_id={order_id} after {_retry} retries: {err_type} {err_str[:150]}")
+        print(f"      traceback: {tb_str[:500]}")
         return {"success": False, "order_id": order_id, "error": f"fetch_order_status_error:{err_str[:200]}"}

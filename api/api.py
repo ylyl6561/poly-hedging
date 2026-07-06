@@ -1447,6 +1447,20 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         order_type_name = _order_type_name(order_type)
         order_side_const = SELL if is_sell else BUY
 
+        # Pure market order: use create_and_post_market_order without FAK/FOK constraint
+        # This allows partial fills instead of all-or-nothing
+        if is_pure_market:
+            order_args = MarketOrderArgs(
+                token_id=str(token_id),
+                amount=round(float(amount), 2) if not is_sell else round(float(amount), 4),
+                side=order_side_const,
+                price=float(order_price),
+            )
+            return client.create_and_post_market_order(
+                order_args=order_args,
+                options=options,
+            )
+
         if order_type_name in ("FAK", "FOK"):
             # SELL market order: amount must be the token count to sell (not USD).
             # We trust the caller to pass the right units; for SELL callers pass token count
@@ -1511,6 +1525,7 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
     order_type = None
     order_price = price
     force_post_only = bool(post_only)
+    is_pure_market = order_type_override is None  # True = 纯市价单，无 FAK/FOK 限制
 
     try:
         order_type = _get_order_type_enum(order_type_override)

@@ -10,12 +10,12 @@
 场景 B — 单边成交 + sell 成功（正常路径，无 balance guard 触发）：
   PLACING_ENTRY → WAITING_ENTRY → HANDLING_SINGLE → WAITING_CLOSE_WINDOW
   → FORCE_CLOSING → SETTLING_OUTCOME
-  on-chain balance 充足，sell 正常挂出；强平窗口对未成交侧 FAK 强平。
+  on-chain balance 充足，sell 正常挂出；强平窗口对未成交侧强平。
 
 场景 C — 【bug 路径】单边成交 + matched 未 settle：
   PLACING_ENTRY → WAITING_ENTRY → HANDLING_SINGLE → WAITING_CLOSE_WINDOW
   → FORCE_CLOSING → SETTLING_OUTCOME
-  on-chain balance=0，balance guard 跳过 sell；强平窗口 FAK 兜底；
+  on-chain balance=0，balance guard 跳过 sell；强平窗口兜底；
   关键约束：place_gtc_sell_order **从未被调用**，FAILED 快照存在。
 
 场景 D — sell 真实 SDK 400 失败：
@@ -194,15 +194,15 @@ def make_tm(
         result.snapshot = snap
         return result
 
-    # place_fak_close_order mock
-    def fake_place_fak_close_order(*, wallet, event_name, side, shares, price, clob_token_ids, fee_rate_bps, condition_id):
+    # place_market_close_order mock
+    def fake_place_market_close_order(*, wallet, event_name, side, shares, price, clob_token_ids, fee_rate_bps, condition_id):
         snap = OrderSnapshot(
             wallet=wallet,
             event_name=event_name,
             side=side,
             amount_usd=shares * price,
             operation=OperationType.FORCE_CLOSE,
-            order_id=f"fak_{wallet.wallet_id}",
+            order_id=f"market_{wallet.wallet_id}",
             token_id="111_up_token" if side == OrderSide.UP else "222_down_token",
             condition_id=condition_id,
             price=price,
@@ -213,7 +213,7 @@ def make_tm(
         )
         outcome = MagicMock()
         outcome.success = force_close_should_succeed
-        outcome.order_id = f"fak_{wallet.wallet_id}" if force_close_should_succeed else None
+        outcome.order_id = f"market_{wallet.wallet_id}" if force_close_should_succeed else None
         outcome.error = None if force_close_should_succeed else "force_close_failed"
         outcome.shares = shares
         outcome.filled_shares = shares if force_close_should_succeed else 0.0
@@ -246,8 +246,8 @@ def make_tm(
     tm._order_exec = MagicMock()
     tm._order_exec.place_entry_order.side_effect = fake_place_entry_order
     tm._order_exec.place_gtc_sell_order.side_effect = fake_place_gtc_sell_order
-    tm._order_exec.place_fak_close_order.side_effect = fake_place_fak_close_order
-    tm._order_exec.execute_force_close.side_effect = fake_place_fak_close_order
+    tm._order_exec.place_market_close_order.side_effect = fake_place_market_close_order
+    tm._order_exec.execute_force_close.side_effect = fake_place_market_close_order
     tm._order_exec.refresh_order_status.side_effect = fake_refresh_order_status
     # cancel_order：默认成功
     cancel_result = MagicMock()
@@ -310,9 +310,9 @@ def test_scenario_a_both_filled_settling_outcome():
     assert task.state == EventTaskState.SETTLING_OUTCOME, task.state
     # 关键：balance guard 在 WAITING_ENTRY 阶段不参与，place_gtc_sell_order 没被调用
     tm._order_exec.place_gtc_sell_order.assert_not_called()
-    # 关键：place_fak_close_order 也没被调用
-    tm._order_exec.place_fak_close_order.assert_not_called()
-    print("  ✓ 场景 A：双边成交 → SETTLING_OUTCOME，无 sell / 无 FAK")
+    # 关键：place_market_close_order 也没被调用
+    tm._order_exec.place_market_close_order.assert_not_called()
+    print("  ✓ 场景 A：双边成交 → SETTLING_OUTCOME，无 sell / 无强平")
 
 
 # ===== 场景 B：单边成交 + sell 成功 =====
@@ -324,7 +324,7 @@ def test_scenario_b_single_fill_balance_ok_normal_sell_path():
     关键校验：
     - place_gtc_sell_order 必须被调用（balance guard 没拦）
     - sell 成功挂出，状态为 SUBMITTED
-    - 后续强平窗口 UP 有 sell 单在簿、DOWN 无仓位 — FAK 不触发（正确业务）
+    - 后续强平窗口 UP 有 sell 单在簿、DOWN 无仓位 — 强平不触发（正确业务）
     """
     task = make_event_task(up_filled=True, down_filled=False)
     tm, balance_holder, fetch_fn = make_tm(up_balance=5.0, down_balance=0.0)
@@ -357,12 +357,12 @@ def test_scenario_b_single_fill_balance_ok_normal_sell_path():
 
 
 def test_scenario_c_balance_guard_skips_sell_force_close_takeover():
-    """UP fill 但 on-chain balance=0 → balance guard 跳过 sell → FAK 强平兜底。
+    """UP fill 但 on-chain balance=0 → balance guard 跳过 sell → 强平兜底。
 
     这是修复的核心 bug 路径（issue #54 / #328）：
     - entry matched 但 token 没 settle
     - balance=0 → sell 注定 400 → guard 跳过
-    - 强平窗口对 live 侧（实际无仓位）和 stale 侧（无仓位）尝试 FAK
+    - 强平窗口对 live 侧（实际无仓位）和 stale 侧（无仓位）尝试强平
     """
     task = make_event_task(up_filled=True, down_filled=False)
     tm, balance_holder, fetch_fn = make_tm(up_balance=0.0, down_balance=0.0)
@@ -462,12 +462,12 @@ def test_scenario_d_balance_ok_but_clob_400_falls_back_to_force_close():
     assert sell_snaps[-1].status == OrderStatus.FAILED.value, sell_snaps[-1].status
     assert "balance: 0, order amount: 5000000" in (sell_snaps[-1].error or ""), sell_snaps[-1].error
     # 强平窗口：原失败路径下 current_order 被 SELL FAILED 覆盖，_execute_force_close
-    # 看不到 entry 单 → FAK 不会触发；但状态机进入 FORCE_CLOSING，最终进 SETTLING_OUTCOME
+    # 看不到 entry 单 → 强平不会触发；但状态机进入 FORCE_CLOSING，最终进 SETTLING_OUTCOME
     # 等市场结果结算。这是已知的边角行为 — 诊断日志 + 强平窗口兜底足够。
     with contextlib.redirect_stdout(io.StringIO()), patch("strategy.task_manager.fetch_token_balance", side_effect=fetch_fn):
         tm._process_force_closing(task)
     assert task.state == EventTaskState.SETTLING_OUTCOME, task.state
-    print("  ✓ 场景 D：balance 充足但 SDK 400 → 原失败分支 + 诊断 + 强平窗口兜底（无 FAK）")
+    print("  ✓ 场景 D：balance 充足但 SDK 400 → 原失败分支 + 诊断 + 强平窗口兜底（无强平）")
 
 
 # ===== 全流程状态机完整性断言 =====

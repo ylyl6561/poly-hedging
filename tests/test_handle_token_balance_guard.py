@@ -232,11 +232,11 @@ def test_handling_single_skips_sell_when_balance_insufficient():
     assert failed_sell_snaps, f"未写入 FAILED 快照: {task.get_order_history('wallet_a')}"
     assert "on_chain_balance_mismatch" in (failed_sell_snaps[-1].error or "")
     # 关键：balance guard 不应覆盖 live_wallet 的 current_order（保持原 entry PLACE 单可见，
-    # 让 _execute_force_close 能正常撤 entry + FAK 强平 UP 仓位）
+    # 让 _execute_force_close 能正常撤 entry + 强平 UP 仓位）
     current = task.get_order("wallet_a")
     assert current is not None
     assert current.operation == OperationType.PLACE, (
-        f"current_order 被覆盖为 {current.operation}，应该保留为 PLACE 让强平窗口能 FAK"
+        f"current_order 被覆盖为 {current.operation}，应该保留为 PLACE 让强平窗口能强平"
     )
     # 状态机必须推进到 WAITING_CLOSE_WINDOW（与原版本契约一致）
     assert task.state == EventTaskState.WAITING_CLOSE_WINDOW, task.state

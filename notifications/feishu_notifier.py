@@ -154,11 +154,12 @@ def format_force_close_message(
     wallet_name: str,
     side: str,
     shares: float,
-    price: float,
+    price: float | None,
     result: str,
     reason: str = "",
     is_paper: bool = False,
     wallet_balances: dict[str, float] | None = None,
+    price_note: str | None = None,
 ) -> tuple[str, str]:
     """格式化强平/撤单通知消息。"""
     paper_tag = " [PAPER]" if is_paper else ""
@@ -166,6 +167,7 @@ def format_force_close_message(
 
     title = f"{side_emoji} 强平通知{paper_tag}"
 
+    price_str = f"${price:.4f}" if price is not None else price_note or "市价"
     body_lines = [
         f"**事件**: {event_name}",
         f"**钱包**: {wallet_name}",
@@ -173,7 +175,7 @@ def format_force_close_message(
         "",
         "**─── 强平信息 ───**",
         f"**强平股数**: {shares:.2f}",
-        f"**强平价格**: ${price:.4f}",
+        f"**强平价格**: {price_str}",
         f"**强平结果**: {result}",
     ]
 
@@ -195,11 +197,12 @@ def send_force_close_notification(
     wallet_name: str,
     side: str,
     shares: float,
-    price: float,
+    price: float | None,
     result: str,
     reason: str = "",
     is_paper: bool = False,
     wallet_balances: dict[str, float] | None = None,
+    price_note: str | None = None,
 ) -> bool:
     """发送强平通知。"""
     if is_paper:
@@ -217,6 +220,7 @@ def send_force_close_notification(
         reason=reason,
         is_paper=is_paper,
         wallet_balances=wallet_balances,
+        price_note=price_note,
     )
     return send_feishu_message(title, body, cfg=cfg)
 

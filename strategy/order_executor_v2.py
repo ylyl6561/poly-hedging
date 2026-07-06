@@ -5,7 +5,7 @@
 1. 挂初始买单 (GTC)
 2. 撤单
 3. 挂抛售单 (GTC)
-4. 执行强平 (FAK)
+4. 执行强平 (纯市价单)
 5. 查询订单状态
 6. 获取钱包余额
 
@@ -120,7 +120,7 @@ class OrderExecutorV2:
     提供标准化的 Polymarket 订单操作方法，支持：
     - GTC 买单（初始挂单）
     - GTC 卖单（抛售单）
-    - FAK 卖单（强平单）
+    - 纯市价单（强平单）
     - 撤单
     - 订单状态查询
     - 钱包余额查询
@@ -204,7 +204,7 @@ class OrderExecutorV2:
         挂 GTC 抛售单。
 
         抛售单挂在订单簿上供市场在 entry_timeout → close_window 区间慢慢吃掉。
-        不立即 FAK 强平，给市场一个软平仓的机会。
+        不立即强平，给市场一个软平仓的机会。
 
         Args:
             wallet: 钱包配置
@@ -247,7 +247,7 @@ class OrderExecutorV2:
 
         return OrderOperationResult(outcome=outcome, snapshot=snapshot)
 
-    def place_fak_close_order(
+    def place_market_close_order(
         self,
         wallet: WalletIdentity,
         event_name: str,
@@ -259,23 +259,10 @@ class OrderExecutorV2:
         price: float | None = None,
     ) -> OrderOperationResult:
         """
-        挂 FAK 强平单。
+        纯市价单强平（Market Order）。
 
-        FAK (Fill-Or-Kill) 立即成交或取消，不会在订单簿上停留。
-        用于事件结束前的强制平仓。
-
-        Args:
-            wallet: 钱包配置
-            event_name: 事件名称
-            side: 交易方向
-            shares: 平仓份额（token 数量）
-            clob_token_ids: YES/NO token IDs
-            fee_rate_bps: 费率（基点）
-            condition_id: 条件 ID
-            price: 平仓价格（默认使用 fixed_sell_price）
-
-        Returns:
-            OrderOperationResult: 包含执行结果和订单快照
+        不挂在订单簿上，直接以市场价立即成交（允许部分成交）。
+        不传 price，SDK 使用市价。
         """
         close_price = price if price is not None else self.fixed_sell_price
         close_amount_usd = shares * close_price
@@ -285,11 +272,11 @@ class OrderExecutorV2:
             event_name=event_name,
             side=side,
             shares=shares,
-            price=close_price,
+            price=None,
             clob_token_ids=clob_token_ids,
             fee_rate_bps=fee_rate_bps,
             condition_id=condition_id,
-            order_type_override="FAK",
+            order_type_override=None,
             post_only=False,
         )
 
@@ -541,24 +528,12 @@ class OrderExecutorV2:
         condition_id: str,
     ) -> OrderOperationResult:
         """
-        执行 FAK 强平。
+        执行纯市价单强平。
 
         这是最终的强制平仓操作，在事件结束前执行。
-        使用 FAK 立即成交或取消。
-
-        Args:
-            wallet: 钱包配置
-            event_name: 事件名称
-            side: 交易方向
-            shares: 平仓份额
-            clob_token_ids: YES/NO token IDs
-            fee_rate_bps: 费率
-            condition_id: 条件 ID
-
-        Returns:
-            OrderOperationResult: 包含执行结果和订单快照
+        使用纯市价单，允许部分成交，快速抛出。
         """
-        return self.place_fak_close_order(
+        return self.place_market_close_order(
             wallet=wallet,
             event_name=event_name,
             side=side,

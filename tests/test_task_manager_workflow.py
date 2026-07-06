@@ -466,14 +466,14 @@ class TestForceClosingWorkflow:
         assert can_transition(EventTaskState.FORCE_CLOSING, EventTaskState.SETTLED) is True
         assert can_transition(EventTaskState.FORCE_CLOSING, EventTaskState.FAILED) is True
 
-    def test_force_closing_cancels_and_places_fak(self, event_task, mock_wallet_up, mock_wallet_down):
+    def test_force_closing_cancels_and_places_market(self, event_task, mock_wallet_up, mock_wallet_down):
         """
-        测试：FORCE_CLOSING 状态下，执行撤单 + FAK 强平
+        测试：FORCE_CLOSING 状态下，执行撤单 + 纯市价单强平
 
         关键业务逻辑：
         - 取消 stale 侧挂单
         - 取消 live 侧 GTC 抛售单（如果有）
-        - 挂 FAK 强平单
+        - 挂纯市价单强平
         """
         # 模拟场景：UP 侧成交，已挂抛售单
         event_task.first_fill_wallet_id = "wallet_up"

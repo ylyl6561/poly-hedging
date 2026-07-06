@@ -314,9 +314,9 @@ class TestWaitingCloseWindowProcess:
 class TestForceClosingProcess:
     """测试 _process_force_closing 方法。"""
 
-    def test_force_closing_cancels_and_places_fak(self, config, mock_wallet_up, mock_wallet_down):
+    def test_force_closing_cancels_and_places_market(self, config, mock_wallet_up, mock_wallet_down):
         """
-        测试：FORCE_CLOSING 状态下，撤单 + FAK 强平
+        测试：FORCE_CLOSING 状态下，撤单 + 纯市价单强平
         """
         manager = create_manager(config, mock_wallet_up, mock_wallet_down)
         task = create_task(mock_wallet_up, mock_wallet_down, start_offset_sec=-120, close_window_sec=60)
@@ -331,7 +331,7 @@ class TestForceClosingProcess:
         # 执行处理
         manager._process_force_closing(task)
 
-        # 验证：撤单 + 挂 FAK 强平单
+        # 验证：撤单 + 纯市价单强平
         assert manager._order_exec.cancel_order.call_count >= 1
         manager._order_exec.execute_force_close.assert_called()
         # 验证：状态转移到 SETTLING_OUTCOME

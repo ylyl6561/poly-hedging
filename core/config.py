@@ -59,7 +59,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
     "dual_wallet_entry_shares": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT", "type": float, "help": "每钱包的下单 token 数量（每单固定数量，配合价格算出金额）"},
     "dual_wallet_max_consecutive_losses": {"default": 2, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MAX_CONSECUTIVE_LOSSES", "type": int, "help": "连续亏损达到该次数后停止交易"},
-    "dual_wallet_poll_interval_sec": {"default": 0.1, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": int, "help": "事件轮询间隔（秒）"},
+    "dual_wallet_poll_interval_sec": {"default": 0.1, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": float, "help": "事件轮询间隔（秒）"},
     "dual_wallet_outcome_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_INTERVAL_SEC", "type": int, "help": "事件结束后轮询最终结果的间隔（秒）"},
     "dual_wallet_outcome_poll_timeout_sec": {"default": 900, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_TIMEOUT_SEC", "type": int, "help": "等待市场最终结果的最长时间（秒）"},
     "dual_wallet_settlement_poll_interval_sec": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_INTERVAL_SEC", "type": int, "help": "等待结算时轮询钱包余额的间隔（秒）"},

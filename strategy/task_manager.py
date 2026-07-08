@@ -148,11 +148,26 @@ class TradeLogger:
         print(f"   [强平窗口] 到达，开始执行强平...")
 
     @classmethod
-    def force_close(cls, event_name: str, wallet_name: str, side: str, amount: str, result: str) -> None:
+    def force_close(
+        cls, event_name: str, wallet_name: str, side: str, amount_str: str, result: str,
+        filled_shares: float | None = None, fill_price: float | None = None,
+        filled_amount_usd: float | None = None,
+    ) -> None:
         """强平执行。"""
         symbol = cls.UP_SYMBOL if side == "UP" else cls.DOWN_SYMBOL
         status = "✓" if result == "成功" else "✗"
-        print(f"   [强平] {event_name} | {wallet_name} {symbol} | {amount} {status}")
+
+        # 补充成交详情
+        extra = []
+        if filled_shares is not None:
+            extra.append(f"{filled_shares:.4f}份")
+        if fill_price is not None:
+            extra.append(f"@ {fill_price:.4f}")
+        if filled_amount_usd is not None:
+            extra.append(f"≈ ${filled_amount_usd:.2f}")
+
+        detail = f" [{', '.join(extra)}]" if extra else ""
+        print(f"   [强平] {event_name} | {wallet_name} {symbol} | {amount_str} {status}{detail}")
 
     @classmethod
     def order_cancelled(cls, wallet_name: str, reason: str = "") -> None:
@@ -1299,8 +1314,13 @@ class TaskManager:
                         result.snapshot.status = OrderStatus.FILLED.value if result.outcome.success else OrderStatus.FAILED.value
                         task.mark_order(result.snapshot)
                     close_amount = shares * close_price
-                    result_str = "成功" if result.outcome.success else "失败"
-                    TradeLogger.force_close(task.event_name, wallet.wallet_name, side.value, f"${close_amount:.2f}", result_str)
+                    outcome_data = result.outcome
+                    filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
+                    fill_price = outcome_data.get("fill_price")
+                    filled_amount_usd = float(filled_shares) * float(fill_price) if (filled_shares is not None and fill_price is not None) else None
+                    result_str = "成功" if outcome_data.success else "失败"
+                    TradeLogger.force_close(task.event_name, wallet.wallet_name, side.value, f"${close_amount:.2f}", result_str,
+                        filled_shares=filled_shares, fill_price=fill_price, filled_amount_usd=filled_amount_usd)
                     send_force_close_notification(
                         event_name=task.event_name,
                         wallet_name=wallet.wallet_name,
@@ -1929,9 +1949,24 @@ class TaskManager:
                     if close_result.snapshot:
                         close_result.snapshot.status = OrderStatus.FILLED.value if close_result.outcome.success else OrderStatus.FAILED.value
                         task.mark_order(close_result.snapshot)
-                    close_amount = entry_filled_shares * self.config.fixed_sell_price
-                    result_str = "成功" if close_result.outcome.success else "失败"
-                    TradeLogger.force_close(task.event_name, wallet_name, close_side.value, f"${close_amount:.2f}", result_str)
+
+                    # 从 outcome 中提取实际成交数据
+                    outcome_data = close_result.outcome
+                    filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
+                    fill_price = outcome_data.get("fill_price")
+                    filled_amount_usd = None
+                    if filled_shares is not None and fill_price is not None:
+                        filled_amount_usd = float(filled_shares) * float(fill_price)
+
+                    result_str = "成功" if outcome_data.success else "失败"
+                    TradeLogger.force_close(
+                        task.event_name, wallet_name, close_side.value,
+                        f"${entry_filled_shares * self.config.fixed_sell_price:.2f}",
+                        result_str,
+                        filled_shares=filled_shares,
+                        fill_price=fill_price,
+                        filled_amount_usd=filled_amount_usd,
+                    )
 
                     # 发送飞书通知：强平结果
                     send_force_close_notification(
@@ -2038,8 +2073,13 @@ class TaskManager:
             # 打印日志
             close_price = self.config.fixed_sell_price
             close_amount = entry_filled_shares * close_price
-            result_str = "成功" if close_result.outcome.success else "失败"
-            TradeLogger.force_close(task.event_name, wallet_name, side.value, f"${close_amount:.2f}", result_str)
+            outcome_data = close_result.outcome
+            filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
+            fill_price = outcome_data.get("fill_price")
+            filled_amount_usd = float(filled_shares) * float(fill_price) if (filled_shares is not None and fill_price is not None) else None
+            result_str = "成功" if outcome_data.success else "失败"
+            TradeLogger.force_close(task.event_name, wallet_name, side.value, f"${close_amount:.2f}", result_str,
+                filled_shares=filled_shares, fill_price=fill_price, filled_amount_usd=filled_amount_usd)
 
             # 发送飞书通知：强平结果
             send_force_close_notification(

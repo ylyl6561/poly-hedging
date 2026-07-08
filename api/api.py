@@ -1177,7 +1177,11 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         raise ValueError("direct_polymarket_trade requires account")
     if not token_id:
         return {"success": False, "error": f"missing_{side.lower()}_token_id"}
-    if price <= 0 or price >= 1:
+    if price is None:
+        if order_type_override is not None:
+            return {"success": False, "error": f"invalid_direct_price:{price}"}
+        # 纯市价单（order_type_override=None）：price 无意义，跳过校验
+    elif price <= 0 or price >= 1:
         return {"success": False, "error": f"invalid_direct_price:{price}"}
     if mock:
         # Mock: BUY pays USD `amount` to buy (amount/price) tokens; SELL sells `amount` tokens at price.
@@ -1450,6 +1454,12 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         # Pure market order: use create_and_post_market_order without FAK/FOK constraint
         # This allows partial fills instead of all-or-nothing
         if is_pure_market:
+            # Polymarket CLOB 的市价单实际是"最差成交价"参数：
+            # BUY: price=0.99 表示愿意以 <=0.99 的价格买入（0.99 以下全吃）
+            # SELL: price=0.01 表示愿意以 >=0.01 的价格卖出（0.01 以上全卖）
+            # 撮合引擎会按最优盘口价依次成交
+            if order_price is None:
+                order_price = 0.01 if is_sell else 0.99
             order_args = MarketOrderArgs(
                 token_id=str(token_id),
                 amount=round(float(amount), 2) if not is_sell else round(float(amount), 4),

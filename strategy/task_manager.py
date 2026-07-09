@@ -257,6 +257,7 @@ from notifications.feishu_notifier import (
 )
 from notifications.feishu_tools import send_feishu
 from state.reconcile_export import export_dual_wallet_event_to_excel
+from state.global_trade_event_journal import GlobalTradeEventJournal, get_journal
 
 from strategy.event_task import EventTask, coalesce_filled_shares
 from strategy.event_task_state import (
@@ -362,8 +363,6 @@ class TaskManager:
         self.dry_run = dry_run
         self.structured_log = structured_log
         self._is_paper = dry_run  # 用于飞书通知判断
-
-        # 交易状态管理器（用于持久化和异步轮询）
         self._state_manager = state_manager or get_trade_state_manager()
 
         # 订单执行器 V2
@@ -391,6 +390,116 @@ class TaskManager:
 
         # 标记是否使用异步轮询
         self._async_polling_enabled = True
+
+        # 全局交易事件日志
+        self._journal_enabled = True
+        self._journal = get_journal()
+
+    def _record_journal_event_start(self, task: EventTask) -> None:
+        """记录交易开始事件到全局日志"""
+        if not getattr(self, "_journal_enabled", True) or not hasattr(self, "_journal") or self._journal is None:
+            return
+        try:
+            wallet_assignments = []
+            for wallet in self.wallets:
+                side = task.side_by_wallet_id.get(wallet.wallet_id)
+                wallet_assignments.append({
+                    "wallet_id": wallet.wallet_id,
+                    "wallet_name": wallet.wallet_name,
+                    "side": side.value if side else "UNKNOWN",
+                })
+            self._journal.record_trade_start(
+                event_id=task.event_id,
+                event_name=task.event_name,
+                condition_id=task.condition_id,
+                start_time=task.start_time.isoformat() if task.start_time else "",
+                end_time=task.end_time.isoformat() if task.end_time else "",
+                wallet_assignments=wallet_assignments,
+                note=f"trigger_reason={task.trigger_reason or 'none'}",
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to record journal event start: {e}")
+
+    def _record_journal_state_change(
+        self,
+        task: EventTask,
+        from_state: str,
+        to_state: str,
+        wallet: WalletIdentity | None = None,
+        side: OrderSide | None = None,
+        note: str = "",
+    ) -> None:
+        """记录状态变更事件到全局日志"""
+        if not getattr(self, "_journal_enabled", True) or not hasattr(self, "_journal") or self._journal is None:
+            return
+        try:
+            self._journal.record_state_change(
+                event_id=task.event_id,
+                event_name=task.event_name,
+                from_state=from_state,
+                to_state=to_state,
+                wallet=wallet.wallet_name if wallet else "",
+                wallet_id=wallet.wallet_id if wallet else "",
+                side=side.value if side else "",
+                note=note,
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to record journal state change: {e}")
+
+    def _record_journal_order(
+        self,
+        task: EventTask,
+        snapshot: OrderSnapshot,
+        operation: str = "",
+        error: str = "",
+        note: str = "",
+    ) -> None:
+        """记录订单事件到全局日志"""
+        if not getattr(self, "_journal_enabled", True) or not hasattr(self, "_journal") or self._journal is None:
+            return
+        try:
+            self._journal.record_order(
+                event_id=task.event_id,
+                event_name=task.event_name,
+                wallet=snapshot.wallet.wallet_name,
+                wallet_id=snapshot.wallet.wallet_id,
+                operation=operation or snapshot.operation.value,
+                side=snapshot.side.value if snapshot.side else "",
+                order_id=snapshot.order_id or "",
+                token_id=snapshot.token_id or "",
+                condition_id=snapshot.condition_id or task.condition_id,
+                amount_usd=snapshot.amount_usd or 0.0,
+                price=snapshot.price or 0.0,
+                shares=snapshot.shares or 0.0,
+                status=snapshot.status or "",
+                filled_shares=snapshot.filled_shares or 0.0,
+                filled_amount_usd=snapshot.filled_amount_usd or 0.0,
+                average_fill_price=snapshot.average_fill_price or 0.0,
+                close_price=snapshot.close_price or 0.0,
+                error=error,
+                note=note,
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to record journal order: {e}")
+
+    def _record_journal_result(self, task: EventTask) -> None:
+        """记录结算结果事件到全局日志"""
+        if not getattr(self, "_journal_enabled", True) or not hasattr(self, "_journal") or self._journal is None:
+            return
+        try:
+            self._journal.record_result(
+                event_id=task.event_id,
+                event_name=task.event_name,
+                outcome=task.outcome.value if task.outcome else "",
+                is_profit=task.is_profit,
+                profit_loss=task.total_pnl,
+                pnl_percent=0.0,  # 计算逻辑需要完整数据
+                trigger_reason=task.trigger_reason or "",
+                wallet_results=task.pnl_by_wallet,
+                note=f"state={task.state.value}",
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to record journal result: {e}")
 
     # ===== 任务管理 =====
 
@@ -430,6 +539,9 @@ class TaskManager:
         task.on_state_change = self._handle_state_change
         task.on_progress = self._handle_task_progress
         task.on_complete = self._handle_task_complete
+
+        # 记录到全局事件日志
+        self._record_journal_event_start(task)
 
         return task
 
@@ -765,6 +877,16 @@ class TaskManager:
                 if not getattr(result.snapshot, "amount_usd", None):
                     result.snapshot.amount_usd = amount_usd
                 task.mark_order(result.snapshot)
+
+            # 记录到全局事件日志（ENTRY 挂单）
+            if result.snapshot:
+                self._record_journal_order(
+                    task=task,
+                    snapshot=result.snapshot,
+                    operation="PLACE",
+                    error=result.outcome.error if not result.outcome.success else "",
+                    note="entry_order",
+                )
 
             # 打印日志
             self._log_order_submission(wallet, side, amount_usd, result.snapshot)
@@ -1139,6 +1261,14 @@ class TaskManager:
                 if sell_result.snapshot:
                     sell_result.snapshot.status = OrderStatus.SUBMITTED.value if sell_result.outcome.success else OrderStatus.FAILED.value
                     task.mark_order(sell_result.snapshot)
+                    # 记录到全局事件日志（SELL 挂单）
+                    self._record_journal_order(
+                        task=task,
+                        snapshot=sell_result.snapshot,
+                        operation="SELL",
+                        error=sell_result.outcome.error if not sell_result.outcome.success else "",
+                        note="sell_order",
+                    )
 
                 # 检查挂单是否成功
                 sell_success = sell_result.outcome.success
@@ -1313,10 +1443,18 @@ class TaskManager:
                     if result.snapshot:
                         result.snapshot.status = OrderStatus.FILLED.value if result.outcome.success else OrderStatus.FAILED.value
                         task.mark_order(result.snapshot)
+                        # 记录到全局事件日志（FORCE_CLOSE）
+                        self._record_journal_order(
+                            task=task,
+                            snapshot=result.snapshot,
+                            operation="FORCE_CLOSE",
+                            error=result.outcome.error if not result.outcome.success else "",
+                            note="force_close_market",
+                        )
                     close_amount = shares * close_price
                     outcome_data = result.outcome
-                    filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
-                    fill_price = outcome_data.get("fill_price")
+                    filled_shares = getattr(outcome_data, "shares_sold", None) or getattr(outcome_data, "shares_bought", None)
+                    fill_price = getattr(outcome_data, "fill_price", None)
                     filled_amount_usd = float(filled_shares) * float(fill_price) if (filled_shares is not None and fill_price is not None) else None
                     result_str = "成功" if outcome_data.success else "失败"
                     TradeLogger.force_close(task.event_name, wallet.wallet_name, side.value, f"${close_amount:.2f}", result_str,
@@ -1329,7 +1467,7 @@ class TaskManager:
                         price=None,
                         price_note="市价单",
                         result=result_str,
-                        is_paper=self._is_paper,
+                        is_paper=getattr(self, "_is_paper", False),
                         wallet_balances=wallet_balances,
                     )
             else:
@@ -1372,7 +1510,7 @@ class TaskManager:
                     order_type="GTC抛售单",
                     shares=float(live_order.shares or 0) if live_order else 0,
                     reason=f"{stale_wallet.wallet_name} 原始挂单先成交",
-                    is_paper=self._is_paper,
+                    is_paper=getattr(self, "_is_paper", False),
                     wallet_balances=wallet_balances,
                 )
 
@@ -1414,7 +1552,7 @@ class TaskManager:
                     order_type="PLACE挂单（entry）",
                     shares=float(stale_order.shares or 0) if stale_order else 0,
                     reason=f"{live_wallet.wallet_name} 抛售单先成交",
-                    is_paper=self._is_paper,
+                    is_paper=getattr(self, "_is_paper", False),
                     wallet_balances=wallet_balances,
                 )
 
@@ -1599,7 +1737,7 @@ class TaskManager:
                 order_type="PLACE挂单（entry）",
                 shares=float(order.shares or 0),
                 reason="等待成交超时（entry_timeout）",
-                is_paper=self._is_paper,
+                is_paper=getattr(self, "_is_paper", False),
                 wallet_balances=wallet_balances_cancel,
             )
 
@@ -1802,7 +1940,7 @@ class TaskManager:
             event_name=task.event_name,
             wallets=wallet_statuses,
             trigger_reason=task.trigger_reason or "强平窗口到期",
-            is_paper=self._is_paper,
+            is_paper=getattr(self, "_is_paper", False),
             wallet_balances=wallet_balances,
         )
 
@@ -1873,7 +2011,7 @@ class TaskManager:
                     order_type="GTC抛售单" if is_sell_order else "PLACE挂单",
                     shares=float(order.shares or 0),
                     reason="强平窗口触发，清理未成交订单",
-                    is_paper=self._is_paper,
+                    is_paper=getattr(self, "_is_paper", False),
                     wallet_balances=wallet_balances,
                 )
 
@@ -1952,8 +2090,8 @@ class TaskManager:
 
                     # 从 outcome 中提取实际成交数据
                     outcome_data = close_result.outcome
-                    filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
-                    fill_price = outcome_data.get("fill_price")
+                    filled_shares = getattr(outcome_data, "shares_sold", None) or getattr(outcome_data, "shares_bought", None)
+                    fill_price = getattr(outcome_data, "fill_price", None)
                     filled_amount_usd = None
                     if filled_shares is not None and fill_price is not None:
                         filled_amount_usd = float(filled_shares) * float(fill_price)
@@ -1978,7 +2116,7 @@ class TaskManager:
                         price_note="市价单",
                         result=result_str,
                         reason="抛售单未成交，强平窗口触发",
-                        is_paper=self._is_paper,
+                        is_paper=getattr(self, "_is_paper", False),
                         wallet_balances=wallet_balances,
                     )
                 else:
@@ -2025,7 +2163,7 @@ class TaskManager:
                         order_type="PLACE挂单",
                         shares=float(order.shares or 0),
                         reason=f"强平窗口触发: {reason}",
-                        is_paper=self._is_paper,
+                        is_paper=getattr(self, "_is_paper", False),
                         wallet_balances=wallet_balances,
                     )
                 print(f"   ⏭️ {wallet_name}: {reason}，跳过纯市价单强平")
@@ -2049,7 +2187,7 @@ class TaskManager:
                     order_type="PLACE挂单",
                     shares=float(order.shares or 0),
                     reason="强平窗口触发，清理未成交订单",
-                    is_paper=self._is_paper,
+                    is_paper=getattr(self, "_is_paper", False),
                     wallet_balances=wallet_balances,
                 )
 
@@ -2074,8 +2212,8 @@ class TaskManager:
             close_price = self.config.fixed_sell_price
             close_amount = entry_filled_shares * close_price
             outcome_data = close_result.outcome
-            filled_shares = outcome_data.get("shares_sold") or outcome_data.get("shares_bought")
-            fill_price = outcome_data.get("fill_price")
+            filled_shares = getattr(outcome_data, "shares_sold", None) or getattr(outcome_data, "shares_bought", None)
+            fill_price = getattr(outcome_data, "fill_price", None)
             filled_amount_usd = float(filled_shares) * float(fill_price) if (filled_shares is not None and fill_price is not None) else None
             result_str = "成功" if outcome_data.success else "失败"
             TradeLogger.force_close(task.event_name, wallet_name, side.value, f"${close_amount:.2f}", result_str,
@@ -2091,7 +2229,7 @@ class TaskManager:
                 price_note="市价单",
                 result=result_str,
                 reason="强平窗口触发",
-                is_paper=self._is_paper,
+                is_paper=getattr(self, "_is_paper", False),
                 wallet_balances=wallet_balances,
             )
 
@@ -2128,6 +2266,9 @@ class TaskManager:
         # 打印结果
         TradeLogger.event_result(task.total_pnl, task.is_profit, task.pnl_by_wallet)
 
+        # 记录结算结果到全局事件日志
+        self._record_journal_result(task)
+
         # 导出结果
         self._export_result(task)
 
@@ -2150,7 +2291,13 @@ class TaskManager:
         new_state: EventTaskState,
     ) -> None:
         """处理状态变化。"""
-        # 状态转移不再打印冗余日志，只在关键状态时提示
+        # 记录状态变更到全局日志
+        self._record_journal_state_change(
+            task=task,
+            from_state=old_state.value,
+            to_state=new_state.value,
+            note=f"reason={task.trigger_reason or 'none'}",
+        )
 
     def _handle_task_progress(self, task: EventTask) -> None:
         """处理任务进度日志。"""
@@ -2184,9 +2331,9 @@ class TaskManager:
         side_text = side.value if side else "UNKNOWN"
         if snapshot and hasattr(snapshot, "price"):
             price = snapshot.price
-            shares = amount_usd / price if price > 0 else 0
+            shares = amount_usd / price if (price and price > 0) else 0
             status = snapshot.status if hasattr(snapshot, "status") else "unknown"
-            token_id = snapshot.clob_token_id if hasattr(snapshot, "clob_token_id") else "N/A"
+            token_id = snapshot.token_id if hasattr(snapshot, "token_id") else "N/A"
             order_id = snapshot.order_id if hasattr(snapshot, "order_id") else "N/A"
             error_text = snapshot.error if hasattr(snapshot, "error") and snapshot.error else ""
             if error_text:

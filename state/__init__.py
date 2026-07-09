@@ -10,6 +10,7 @@ Exports:
 - Candidate journal: append_candidate_record
 - Structured logging: StructuredRunLog
 - Trade state: TradeStateManager, TradePhase, TradeRecord, AsyncOutcomePoller
+- Global trade event journal: GlobalTradeEventJournal, get_journal
 """
 
 from .state import (
@@ -49,6 +50,11 @@ from .trade_state import (
     init_trade_state,
 )
 
+from .global_trade_event_journal import (
+    GlobalTradeEventJournal,
+    get_journal,
+)
+
 __all__ = [
     # Daily spend
     "load_daily_spend",
@@ -85,4 +91,7 @@ __all__ = [
     "get_trade_state_manager",
     "get_async_outcome_poller",
     "init_trade_state",
+    # Global trade event journal
+    "GlobalTradeEventJournal",
+    "get_journal",
 ]

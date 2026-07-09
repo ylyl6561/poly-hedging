@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Trade Event Journal</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --accent-blue: #3b82f6;
+            --accent-purple: #a855f7;
+            --border-color: #475569;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-card .label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .summary-card .value.green { color: var(--accent-green); }
+        .summary-card .value.red { color: var(--accent-red); }
+        .summary-card .value.yellow { color: var(--accent-yellow); }
+        .summary-card .value.blue { color: var(--accent-blue); }
+
+        .summary-card .sub-value {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .tab .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 6px;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--bg-card);
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* Status Badges */
+        .badge-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-status.profit { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .badge-status.loss { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-status.submitted { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .badge-status.filled { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .badge-status.failed { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-status.pending { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .badge-status.cancelled { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
+
+        .badge-side {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-side.up { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .badge-side.down { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        .badge-operation {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-operation.place { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .badge-operation.sell { background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); }
+        .badge-operation.force_close { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .badge-operation.cancel { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
+
+        /* Amount formatting */
+        .amount {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .amount.positive { color: var(--accent-green); }
+        .amount.negative { color: var(--accent-red); }
+
+        /* Timestamp */
+        .timestamp {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        /* Error */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 16px;
+            color: var(--accent-red);
+            margin-bottom: 20px;
+        }
+
+        /* PnL indicator */
+        .pnl-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pnl-indicator svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 800px;
+            }
+        }
+
+        /* Last updated */
+        .last-updated {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Event detail expand */
+        .event-row {
+            cursor: pointer;
+        }
+
+        .event-row:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .event-detail {
+            background: var(--bg-card);
+            padding: 16px;
+            margin-top: 8px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📊 Global Trade Event Journal</h1>
+                <p class="last-updated" id="lastUpdated">最后更新: --</p>
+            </div>
+            <div class="header-actions">
+                <div id="fileInputContainer" class="hidden">
+                    <input type="file" id="fileInput" accept=".json" style="display: none;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                        📁 选择文件
+                    </button>
+                </div>
+                <button class="btn btn-primary" onclick="loadJournal()">
+                    🔄 刷新
+                </button>
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card">
+                <div class="label">总交易数</div>
+                <div class="value blue" id="totalTrades">-</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">盈利交易</div>
+                <div class="value green" id="profitableTrades">-</div>
+                <div class="sub-value" id="winRate">胜率 --%</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">亏损交易</div>
+                <div class="value red" id="losingTrades">-</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">总 PnL</div>
+                <div class="value" id="totalPnl">-</div>
+                <div class="sub-value" id="avgPnl">场均 --</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">事件总数</div>
+                <div class="value" id="totalEvents">-</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">订单总数</div>
+                <div class="value" id="totalOrders">-</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="events" onclick="switchTab('events')">
+                事件 <span class="badge" id="eventsBadge">0</span>
+            </button>
+            <button class="tab" data-tab="orders" onclick="switchTab('orders')">
+                订单 <span class="badge" id="ordersBadge">0</span>
+            </button>
+            <button class="tab" data-tab="results" onclick="switchTab('results')">
+                结算结果 <span class="badge" id="resultsBadge">0</span>
+            </button>
+        </div>
+
+        <div class="filters" id="filters">
+            <div class="filter-group hidden">
+                <label>事件ID:</label>
+                <input type="text" id="filterEventId" placeholder="搜索事件ID" onkeyup="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>事件名称:</label>
+                <input type="text" id="filterEventName" placeholder="搜索事件名称" onkeyup="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label>钱包:</label>
+                <select id="filterWallet" onchange="applyFilters()">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>方向:</label>
+                <select id="filterSide" onchange="applyFilters()">
+                    <option value="">全部</option>
+                    <option value="UP">UP</option>
+                    <option value="DOWN">DOWN</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>操作:</label>
+                <select id="filterOperation" onchange="applyFilters()">
+                    <option value="">全部</option>
+                    <option value="PLACE">PLACE</option>
+                    <option value="SELL">SELL</option>
+                    <option value="FORCE_CLOSE">FORCE_CLOSE</option>
+                    <option value="CANCEL">CANCEL</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>结果:</label>
+                <select id="filterResult" onchange="applyFilters()">
+                    <option value="">全部</option>
+                    <option value="profit">盈利</option>
+                    <option value="loss">亏损</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="dataTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+            <div class="empty-state hidden" id="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p>暂无数据</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let journalData = null;
+        let currentTab = 'events';
+        let filteredData = { events: [], orders: [], results: [] };
+        let expandedRows = new Set(); // Track expanded rows by ID
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileInput').dataset.used = 'true';
+                const text = await file.text();
+                try {
+                    journalData = JSON.parse(text);
+                    processData();
+                    hideError();
+                    document.getElementById('fileInputContainer').classList.add('hidden');
+                } catch (err) {
+                    showError('文件解析失败: ' + err.message);
+                }
+            }
+        });
+
+        // 动态加载 JSON 文件
+        async function loadJSON(url) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 0) {
+                            // status=0 表示 file:// 协议或其他本地文件
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                reject(new Error('解析失败: ' + e.message));
+                            }
+                        } else if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                reject(new Error('解析失败: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+                        }
+                    }
+                };
+                xhr.onerror = function() {
+                    reject(new Error('网络错误'));
+                };
+                xhr.send(null);
+            });
+        }
+
+        // 获取与 HTML 同目录的 JSON 文件路径
+        function getJournalPath() {
+            const baseUrl = window.location.href.replace(/[?#].*$/, '').replace(/[\\\/][^\\\/]*$/, '');
+            return baseUrl + '/global_trade_events.json';
+        }
+
+        // 加载 journal
+        async function loadJournal() {
+            const path = getJournalPath();
+            
+            try {
+                journalData = await loadJSON(path + '?t=' + Date.now());
+                processData();
+            } catch (err) {
+                // 如果 fetch/XMLHttpRequest 失败，尝试使用文件输入
+                if (!document.getElementById('fileInput').dataset.used) {
+                    showError(`加载失败: ${err.message}<br><br>请选择 <code>global_trade_events.json</code> 文件。`);
+                    document.getElementById('fileInputContainer').classList.remove('hidden');
+                }
+            }
+        }
+
+        // Page load - manual refresh only
+        document.addEventListener('DOMContentLoaded', () => {
+            loadJournal();
+        });
+
+        // Process loaded data
+        function processData() {
+            if (!journalData || !journalData.events) {
+                showError('数据格式无效');
+                return;
+            }
+
+            hideError();
+            updateSummary();
+            updateFilters();
+            applyFilters();
+            switchTab('events');
+
+            document.getElementById('lastUpdated').textContent = 
+                '最后更新: ' + formatTimestamp(journalData.updated_at);
+        }
+
+        // Update summary cards
+        function updateSummary() {
+            const summary = journalData.summary || {};
+            const total = summary.total_trades || 0;
+            const profitable = summary.profitable_trades || 0;
+            const losing = summary.losing_trades || 0;
+            const pnl = summary.total_pnl || 0;
+            const winRate = total > 0 ? ((profitable / total) * 100).toFixed(1) : 0;
+            const avgPnl = total > 0 ? (pnl / total).toFixed(2) : 0;
+
+            document.getElementById('totalTrades').textContent = total;
+            document.getElementById('profitableTrades').textContent = profitable;
+            document.getElementById('winRate').textContent = '胜率 ' + winRate + '%';
+            document.getElementById('losingTrades').textContent = losing;
+            
+            const pnlEl = document.getElementById('totalPnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.className = 'value ' + (pnl >= 0 ? 'green' : 'red');
+            
+            document.getElementById('avgPnl').textContent = '场均 ' + (avgPnl >= 0 ? '+' : '') + '$' + avgPnl;
+            document.getElementById('totalEvents').textContent = journalData.total_events || 0;
+            document.getElementById('totalOrders').textContent = journalData.total_orders || 0;
+
+            // Update badges
+            document.getElementById('eventsBadge').textContent = journalData.events?.length || 0;
+            document.getElementById('ordersBadge').textContent = journalData.orders?.length || 0;
+            document.getElementById('resultsBadge').textContent = journalData.results?.length || 0;
+        }
+
+        // Update filter options
+        function updateFilters() {
+            const wallets = new Set();
+            journalData.events?.forEach(e => {
+                e.raw?.wallet_assignments?.forEach(w => {
+                    if (w.wallet_id) wallets.add(w.wallet_id);
+                });
+            });
+
+            const walletSelect = document.getElementById('filterWallet');
+            walletSelect.innerHTML = '<option value="">全部</option>';
+            wallets.forEach(w => {
+                walletSelect.innerHTML += `<option value="${w}">${w}</option>`;
+            });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const eventId = document.getElementById('filterEventId').value.toLowerCase();
+            const eventName = document.getElementById('filterEventName').value.toLowerCase();
+            const wallet = document.getElementById('filterWallet').value;
+            const side = document.getElementById('filterSide').value;
+            const operation = document.getElementById('filterOperation').value;
+            const result = document.getElementById('filterResult').value;
+
+            // Sort function: reverse chronological order (newest first)
+            const sortByTimeDesc = (a, b) => {
+                const timeA = a.timestamp || '';
+                const timeB = b.timestamp || '';
+                return timeB.localeCompare(timeA);
+            };
+
+            // Filter events - group by event_id, show final state + aggregated order data
+            const eventGroups = {};
+            (journalData.events || []).forEach(e => {
+                const eid = e.event_id;
+                if (!eventGroups[eid]) {
+                    eventGroups[eid] = {
+                        event: e,
+                        orders: [],
+                        phases: []
+                    };
+                }
+                eventGroups[eid].orders.push(e);
+                if (e.phase) eventGroups[eid].phases.push({ phase: e.phase, timestamp: e.timestamp });
+            });
+
+            // Get orders grouped by event_id
+            const ordersByEvent = {};
+            (journalData.orders || []).forEach(o => {
+                const eid = o.event_id;
+                if (!ordersByEvent[eid]) ordersByEvent[eid] = [];
+                ordersByEvent[eid].push(o);
+            });
+
+            filteredData.events = Object.values(eventGroups)
+                .filter(group => {
+                    const e = group.event;
+                    if (eventId && !e.event_id?.toLowerCase().includes(eventId)) return false;
+                    if (wallet) {
+                        const rawWallets = e.raw?.wallet_assignments?.map(w => w.wallet_id) || [];
+                        if (!rawWallets.includes(wallet)) return false;
+                    }
+                    if (side) {
+                        const rawSides = e.raw?.wallet_assignments?.map(w => w.side) || [];
+                        if (!rawSides.includes(side)) return false;
+                    }
+                    if (eventName && !(e.event_name?.toLowerCase().includes(eventName) || e.event_id?.toLowerCase().includes(eventName))) return false;
+                    return true;
+                })
+                .map(group => {
+                    // Get the final phase (last one by timestamp)
+                    const sortedPhases = group.phases.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+                    const finalPhase = sortedPhases.length > 0 ? sortedPhases[sortedPhases.length - 1].phase : group.event.phase;
+                    
+                    // Aggregate order data by wallet
+                    const orders = ordersByEvent[group.event.event_id] || [];
+                    const walletSummary = {};
+                    orders.forEach(o => {
+                        if (!walletSummary[o.wallet]) {
+                            walletSummary[o.wallet] = { shares: 0, amount: 0, price: 0 };
+                        }
+                        if (o.filled_shares > 0) {
+                            walletSummary[o.wallet].shares += o.filled_shares;
+                            walletSummary[o.wallet].amount += o.filled_amount_usd || 0;
+                            walletSummary[o.wallet].price = o.average_fill_price || o.price;
+                        }
+                    });
+
+                    return {
+                        ...group.event,
+                        final_phase: finalPhase,
+                        intermediate_events: group.orders,
+                        wallet_summary: walletSummary
+                    };
+                })
+                .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+            // Filter orders
+            filteredData.orders = (journalData.orders || []).filter(o => {
+                if (eventId && !o.event_id?.toLowerCase().includes(eventId)) return false;
+                if (wallet && o.wallet !== wallet) return false;
+                if (side && o.side !== side) return false;
+                if (operation && o.operation !== operation) return false;
+                if (eventName && !(o.event_name?.toLowerCase().includes(eventName) || o.event_id?.toLowerCase().includes(eventName))) return false;
+                return true;
+            }).sort(sortByTimeDesc);
+
+            // Filter results
+            filteredData.results = (journalData.results || []).filter(r => {
+                if (eventId && !r.event_id?.toLowerCase().includes(eventId)) return false;
+                if (result === 'profit' && !r.is_profit) return false;
+                if (result === 'loss' && r.is_profit) return false;
+                if (eventName && !(r.event_name?.toLowerCase().includes(eventName) || r.event_id?.toLowerCase().includes(eventName))) return false;
+                return true;
+            }).sort(sortByTimeDesc);
+
+            renderTable();
+        }
+
+        // Switch tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            renderTable();
+        }
+
+        // Render table
+        function renderTable() {
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            let data = filteredData[currentTab];
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '';
+                thead.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            if (currentTab === 'events') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>时间</th>
+                        <th>事件名称</th>
+                        <th>类型</th>
+                        <th>钱包</th>
+                        <th>方向</th>
+                        <th>价格</th>
+                        <th>数量</th>
+                        <th>状态</th>
+                    </tr>
+                `;
+                tbody.innerHTML = filteredData.events.map(e => {
+                    const rowId = e.event_id;
+                    const isExpanded = expandedRows.has(rowId);
+                    const walletAssignments = e.raw?.wallet_assignments || [];
+                    const wallets = walletAssignments.map(w => w.wallet_name || w.wallet_id).join(', ') || '-';
+                    const sides = walletAssignments.map(w => w.side).filter(Boolean).join(', ') || '-';
+                    
+                    // Show aggregated data
+                    const walletSummary = e.wallet_summary || {};
+                    const totalShares = Object.values(walletSummary).reduce((sum, w) => sum + (w.shares || 0), 0);
+                    const totalAmount = Object.values(walletSummary).reduce((sum, w) => sum + (w.amount || 0), 0);
+                    const avgPrice = totalShares > 0 ? Object.values(walletSummary).reduce((sum, w) => sum + (w.price || 0) * (w.shares || 0), 0) / totalShares : 0;
+
+                    // Build detail with all intermediate events
+                    const detailHtml = [
+                        `<div style="margin-bottom: 12px;"><strong>事件ID:</strong> ${e.event_id || '-'}</div>`,
+                        `<div style="margin-bottom: 12px;"><strong>中间状态:</strong></div>`,
+                        `<table style="width: 100%; font-size: 12px; margin-bottom: 12px;">`,
+                        `<tr><th>时间</th><th>状态</th><th>钱包</th><th>方向</th><th>备注</th></tr>`,
+                        e.intermediate_events.map(ev => {
+                            const evWallets = ev.raw?.wallet_assignments?.map(w => w.wallet_name || w.wallet_id).join(', ') || '-';
+                            const evSides = ev.raw?.wallet_assignments?.map(w => w.side).filter(Boolean).join(', ') || '-';
+                            return `<tr>
+                                <td>${formatTimestamp(ev.timestamp)}</td>
+                                <td>${getPhaseLabel(ev.phase)}</td>
+                                <td>${evWallets}</td>
+                                <td>${evSides}</td>
+                                <td>${ev.note || '-'}</td>
+                            </tr>`;
+                        }).join(''),
+                        `</table>`,
+                        `<div style="margin-top: 12px;"><strong>各账号成交汇总:</strong></div>`,
+                        `<table style="width: 100%; font-size: 12px;">`,
+                        `<tr><th>钱包</th><th>成交量</th><th>成交额</th><th>均价</th></tr>`,
+                        Object.entries(walletSummary).map(([w, data]) => `<tr>
+                            <td>${w}</td>
+                            <td>${data.shares > 0 ? (data.shares / 100).toFixed(2) : '-'}</td>
+                            <td>${data.amount > 0 ? '$' + data.amount.toFixed(2) : '-'}</td>
+                            <td>${data.price > 0 ? '$' + data.price.toFixed(4) : '-'}</td>
+                        </tr>`).join(''),
+                        `</table>`,
+                        `<div style="margin-top: 12px;"><strong>原始数据:</strong></div>`,
+                        `<pre style="font-size: 11px; max-height: 300px; overflow-y: auto;">${JSON.stringify(e.intermediate_events, null, 2)}</pre>`
+                    ].join('');
+
+                    return `
+                    <tr class="event-row" onclick="toggleDetail('${rowId}', this)">
+                        <td><span class="timestamp">${formatTimestamp(e.timestamp)}</span></td>
+                        <td>${e.event_name || '-'}</td>
+                        <td>${getEventTypeLabel(e.event_type)}</td>
+                        <td>${wallets}</td>
+                        <td>${sides !== '-' ? `<span class="badge-side ${sides.toLowerCase()}">${sides}</span>` : '-'}</td>
+                        <td>${avgPrice > 0 ? '$' + avgPrice.toFixed(4) : '-'}</td>
+                        <td>${totalShares > 0 ? (totalShares / 100).toFixed(2) : '-'}</td>
+                        <td>${getPhaseLabel(e.final_phase)}</td>
+                    </tr>
+                    <tr class="detail-row ${isExpanded ? '' : 'hidden'}"><td colspan="8"><div class="event-detail">${detailHtml}</div></td></tr>
+                `}).join('');
+            } else if (currentTab === 'orders') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>时间</th>
+                        <th>事件</th>
+                        <th>钱包</th>
+                        <th>方向</th>
+                        <th>操作</th>
+                        <th>价格</th>
+                        <th>数量</th>
+                        <th>状态</th>
+                        <th>金额</th>
+                    </tr>
+                `;
+                tbody.innerHTML = data.map(o => {
+                    const rowId = o.order_id || o.event_id + '_' + o.timestamp;
+                    const isExpanded = expandedRows.has(rowId);
+                    return `
+                    <tr class="event-row" onclick="toggleDetail('${rowId}', this)">
+                        <td><span class="timestamp">${formatTimestamp(o.timestamp)}</span></td>
+                        <td>${o.event_name || o.event_id || '-'}</td>
+                        <td>${o.wallet || '-'}</td>
+                        <td>${o.side ? `<span class="badge-side ${o.side.toLowerCase()}">${o.side}</span>` : '-'}</td>
+                        <td><span class="badge-operation ${getOperationClass(o.operation)}">${getOperationLabel(o.operation)}</span></td>
+                        <td>${o.price > 0 ? '$' + o.price.toFixed(4) : '-'}</td>
+                        <td>${o.shares > 0 ? o.shares.toFixed(2) : '-'}</td>
+                        <td><span class="badge-status ${getStatusClass(o.status)}">${getStatusLabel(o.status)}</span></td>
+                        <td>
+                            <div class="amount">$${o.amount_usd?.toFixed(2) || '0.00'}</div>
+                            ${o.error ? `<div style="color: var(--accent-red); font-size: 11px;">❌ ${o.error}</div>` : ''}
+                        </td>
+                    </tr>
+                    <tr class="detail-row ${isExpanded ? '' : 'hidden'}"><td colspan="9"><div class="event-detail">事件ID: ${o.event_id || '-'}\n\n${JSON.stringify(o, null, 2)}</div></td></tr>
+                `}).join('');
+            } else if (currentTab === 'results') {
+                thead.innerHTML = `
+                    <tr>
+                        <th>时间</th>
+                        <th>事件</th>
+                        <th>结果</th>
+                        <th>价格</th>
+                        <th>数量</th>
+                        <th>盈亏</th>
+                        <th>触发原因</th>
+                        <th>备注</th>
+                    </tr>
+                `;
+                tbody.innerHTML = data.map(r => {
+                    const rowId = r.event_id + '_' + r.timestamp;
+                    const isExpanded = expandedRows.has(rowId);
+                    return `
+                    <tr class="event-row" onclick="toggleDetail('${rowId}', this)">
+                        <td><span class="timestamp">${formatTimestamp(r.timestamp)}</span></td>
+                        <td>${r.event_name || r.event_id || '-'}</td>
+                        <td>
+                            ${r.outcome ? `<span class="badge-side ${r.outcome.toLowerCase()}">${r.outcome}</span>` : '-'}
+                        </td>
+                        <td>${r.actual_price > 0 ? '$' + r.actual_price.toFixed(4) : '-'}</td>
+                        <td>${r.actual_shares > 0 ? (r.actual_shares / 100).toFixed(2) : '-'}</td>
+                        <td>
+                            <span class="pnl-indicator">
+                                ${r.is_profit ? '📈' : '📉'}
+                                <span class="amount ${r.is_profit ? 'positive' : 'negative'}">
+                                    ${r.is_profit ? '+' : ''}$${r.profit_loss?.toFixed(2) || '0.00'}
+                                </span>
+                            </span>
+                        </td>
+                        <td><small>${r.trigger_reason || '-'}</small></td>
+                        <td><small>${r.note || '-'}</small></td>
+                    </tr>
+                    <tr class="detail-row ${isExpanded ? '' : 'hidden'}"><td colspan="8"><div class="event-detail">事件ID: ${r.event_id || '-'}\n\n${JSON.stringify(r, null, 2)}</div></td></tr>
+                `}).join('');
+            }
+        }
+
+        // Toggle detail row
+        function toggleDetail(rowId, row) {
+            const detailRow = row.nextElementSibling;
+            if (detailRow && detailRow.classList.contains('detail-row')) {
+                detailRow.classList.toggle('hidden');
+                if (!detailRow.classList.contains('hidden')) {
+                    expandedRows.add(rowId);
+                } else {
+                    expandedRows.delete(rowId);
+                }
+            }
+        }
+
+        // Format helpers
+        function formatTimestamp(ts) {
+            if (!ts) return '-';
+            try {
+                const date = new Date(ts.replace('Z', '+00:00'));
+                return date.toLocaleString('zh-CN', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+            } catch {
+                return ts;
+            }
+        }
+
+        function formatEventDetail(e) {
+            if (e.event_type === 'state_change') {
+                const raw = e.raw || {};
+                return `<small>${raw.from_state || ''} → ${raw.to_state || ''}</small>`;
+            }
+            if (e.event_type === 'trade_start') {
+                return `<small>开始交易</small>`;
+            }
+            return '-';
+        }
+
+        function truncate(str, len) {
+            if (!str) return '';
+            return str.length > len ? str.slice(0, len) + '...' : str;
+        }
+
+        function getEventTypeClass(type) {
+            const map = {
+                'state_change': 'submitted',
+                'trade_start': 'pending',
+                'order': 'submitted',
+                'result': 'filled'
+            };
+            return map[type] || 'pending';
+        }
+
+        function getEventTypeLabel(type) {
+            const map = {
+                'trade_start': '开仓',
+                'order': '订单',
+                'result': '结算'
+            };
+            const label = map[type] || type;
+            return `<span class="badge-status ${getEventTypeClass(type)}">${label}</span>`;
+        }
+
+        function getPhaseLabel(phase) {
+            if (!phase) return '-';
+            const map = {
+                'pending': '待开始',
+                'placing_entry': '挂单入场',
+                'waiting_entry': '等待成交',
+                'handling_single': '单边处理',
+                'placing_exit': '挂单出场',
+                'waiting_exit': '等待平仓',
+                'closed': '已关闭',
+                'filled': '已成交'
+            };
+            return map[phase.toLowerCase()] || phase;
+        }
+
+        function getOperationClass(op) {
+            const map = {
+                'PLACE': 'place',
+                'SELL': 'sell',
+                'FORCE_CLOSE': 'force_close',
+                'CANCEL': 'cancel'
+            };
+            return map[op] || 'place';
+        }
+
+        function getOperationLabel(op) {
+            const map = {
+                'PLACE': '开仓',
+                'SELL': '平仓',
+                'FORCE_CLOSE': '强平',
+                'CANCEL': '撤单'
+            };
+            return map[op] || op || '-';
+        }
+
+        function getStatusClass(status) {
+            if (!status) return '';
+            const s = status.toLowerCase();
+            if (s.includes('fill')) return 'filled';
+            if (s.includes('success') || s.includes('live') || s.includes('submitted')) return 'submitted';
+            if (s.includes('fail') || s.includes('error')) return 'failed';
+            if (s.includes('cancel')) return 'cancelled';
+            return 'pending';
+        }
+
+        function getStatusLabel(status) {
+            if (!status) return '-';
+            const s = status.toLowerCase();
+            if (s.includes('fill')) return '已成交';
+            if (s.includes('success') || s.includes('live')) return '成功';
+            if (s.includes('submitted') || s.includes('pending')) return '挂单中';
+            if (s.includes('fail') || s.includes('error')) return '失败';
+            if (s.includes('cancel')) return '已撤销';
+            return status;
+        }
+
+        // Error handling
+        function showError(msg) {
+            document.getElementById('errorContainer').innerHTML = 
+                `<div class="error-message">${msg}</div>`;
+        }
+
+        function hideError() {
+            document.getElementById('errorContainer').innerHTML = '';
+        }
+
+    </script>
+</body>
+</html>

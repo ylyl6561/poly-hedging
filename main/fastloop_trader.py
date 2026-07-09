@@ -20,6 +20,7 @@ from core import load_env_file, resolve_config, update_config, CONFIG_SCHEMA
 from api import install_sdk_logger_noise_filter
 from state import StructuredRunLog
 from state.trade_state import init_trade_state, get_trade_state_manager, get_async_outcome_poller, TradePhase
+from state.global_trade_event_journal import GlobalTradeEventJournal
 from market import discover_fast_market_markets
 from strategy.dual_wallet_event_strategy import DualWalletEventStrategy
 

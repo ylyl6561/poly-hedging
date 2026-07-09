@@ -52,7 +52,7 @@ load_env_file(__file__)
 CONFIG_SCHEMA = {
     "strategy_mode": {"default": "dual_wallet_event", "env": "SIMMER_FASTLOOP_STRATEGY_MODE", "type": str, "help": "策略模式：dual_wallet_event"},
     "dual_wallet_entry_timeout_sec": {"default": 120, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
-    "dual_wallet_force_close_window_sec": {"default": 50, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
+    "dual_wallet_force_close_window_sec": {"default": 40, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
     "dual_wallet_fak_close_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FAK_CLOSE_PRICE", "type": float, "help": "双边同时成交后 FAK 强平价格（0-1，建议 0.99）"},
     "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
@@ -61,7 +61,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_max_consecutive_losses": {"default": 2, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MAX_CONSECUTIVE_LOSSES", "type": int, "help": "连续亏损达到该次数后停止交易"},
     "dual_wallet_poll_interval_sec": {"default": 0.1, "env": "SIMMER_FASTLOOP_DUAL_WALLET_POLL_INTERVAL_SEC", "type": float, "help": "事件轮询间隔（秒）"},
     "dual_wallet_outcome_poll_interval_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_INTERVAL_SEC", "type": int, "help": "事件结束后轮询最终结果的间隔（秒）"},
-    "dual_wallet_outcome_poll_timeout_sec": {"default": 900, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_TIMEOUT_SEC", "type": int, "help": "等待市场最终结果的最长时间（秒）"},
+    "dual_wallet_outcome_poll_timeout_sec": {"default": 600, "env": "SIMMER_FASTLOOP_DUAL_WALLET_OUTCOME_POLL_TIMEOUT_SEC", "type": int, "help": "等待市场最终结果的最长时间（秒）"},
     "dual_wallet_settlement_poll_interval_sec": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_INTERVAL_SEC", "type": int, "help": "等待结算时轮询钱包余额的间隔（秒）"},
     "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
     "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
@@ -76,6 +76,10 @@ CONFIG_SCHEMA = {
     "dual_wallet_mock_mode": {"default": False, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_MODE", "type": bool, "help": "Mock 模式：模拟整个流程但不真实下单"},
     "dual_wallet_mock_fill_side": {"default": "UP", "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_FILL_SIDE", "type": str, "help": "Mock 模式下模拟哪侧先成交：UP 或 DOWN"},
     "dual_wallet_mock_fill_after_sec": {"default": 5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MOCK_FILL_AFTER_SEC", "type": int, "help": "Mock 模式下模拟成交延迟（秒）"},
+    # ===== 全局事件日志配置 =====
+    "global_event_journal_enabled": {"default": True, "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_ENABLED", "type": bool, "help": "是否启用全局事件日志（跨会话持久化到固定文件）"},
+    "global_event_journal_file": {"default": "main/global_trade_events.json", "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_FILE", "type": str, "help": "全局事件日志文件路径"},
+    "global_event_journal_flush_interval": {"default": 5, "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_FLUSH_INTERVAL", "type": int, "help": "全局事件日志刷新间隔（秒）"},
 }
 
 WALLET_LINK_RETRIES = int(os.environ.get("SIMMER_WALLET_LINK_RETRIES", "4"))
@@ -180,6 +184,7 @@ def resolve_config(skill_file):
     global DUAL_WALLET_MAX_CONSECUTIVE_LOSSES, DUAL_WALLET_POLL_INTERVAL_SEC
     global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START
     global CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE, DUAL_WALLET_DRY_RUN_STATUS_SCRIPT
+    global GLOBAL_EVENT_JOURNAL_ENABLED, GLOBAL_EVENT_JOURNAL_FILE
 
     STRATEGY_MODE = cfg.get("strategy_mode", "dual_wallet_event").lower()
     route = cfg.get("execution_route")
@@ -205,6 +210,8 @@ def resolve_config(skill_file):
     DUAL_WALLET_DRY_RUN_STATUS_SCRIPT = cfg.get("dual_wallet_dry_run_status_script", {})
     CANDIDATE_JOURNAL = cfg.get("candidate_journal", False)
     CANDIDATE_JOURNAL_FILE = cfg.get("candidate_journal_file", "candidate_journal.jsonl")
+    GLOBAL_EVENT_JOURNAL_ENABLED = cfg.get("global_event_journal_enabled", True)
+    GLOBAL_EVENT_JOURNAL_FILE = cfg.get("global_event_journal_file", "main/global_trade_events.json")
 
     return cfg
 

@@ -31,6 +31,9 @@ class EventTaskState(str, Enum):
     # 单边成交处理
     HANDLING_SINGLE = "handling_single"  # 单边成交，正在处理（撤单+挂抛售）
 
+    # FOK 抛售重试
+    FOK_RETRYING = "fok_retrying"  # FOK 纯市价单抛售失败，正在按间隔持续重试，同时监测另一钱包成交
+
     # 强平阶段
     WAITING_CLOSE_WINDOW = "waiting_close_window"  # 等待进入强平窗口
     FORCE_CLOSING = "force_closing"  # 正在执行强平
@@ -52,6 +55,7 @@ STATE_CATEGORIES = {
         EventTaskState.PLACING_ENTRY,
         EventTaskState.WAITING_ENTRY,
         EventTaskState.HANDLING_SINGLE,
+        EventTaskState.FOK_RETRYING,
         EventTaskState.WAITING_CLOSE_WINDOW,
         EventTaskState.FORCE_CLOSING,
         EventTaskState.SETTLING_OUTCOME,
@@ -99,7 +103,14 @@ STATE_TRANSITIONS: dict[EventTaskState, set[EventTaskState]] = {
         EventTaskState.WAITING_CLOSE_WINDOW,  # 处理完成，等待强平窗口
         EventTaskState.FORCE_CLOSING,     # 直接进入强平
         EventTaskState.SETTLING_OUTCOME,   # 事件已结束
+        EventTaskState.FOK_RETRYING,        # 单次 FOK 抛售失败，进入持续重试状态
         EventTaskState.SETTLED,           # 无成交直接结算
+    },
+    EventTaskState.FOK_RETRYING: {
+        EventTaskState.WAITING_CLOSE_WINDOW,  # FOK 成交 / 另一钱包成交 / 强平窗口即将到达 → 退出重试
+        EventTaskState.FORCE_CLOSING,     # 强平窗口到达
+        EventTaskState.SETTLING_OUTCOME,   # 事件已结束
+        EventTaskState.FAILED,            # 异常退出
     },
     EventTaskState.WAITING_CLOSE_WINDOW: {
         EventTaskState.FORCE_CLOSING,     # 进入强平窗口
@@ -162,6 +173,11 @@ STATE_METADATA: dict[EventTaskState, dict] = {
         "name": "单边处理",
         "priority": 25,
         "color": "orange",
+    },
+    EventTaskState.FOK_RETRYING: {
+        "name": "FOK重试中",
+        "priority": 28,
+        "color": "magenta",
     },
     EventTaskState.WAITING_CLOSE_WINDOW: {
         "name": "等待强平",

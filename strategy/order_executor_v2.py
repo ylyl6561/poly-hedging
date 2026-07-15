@@ -292,6 +292,64 @@ class OrderExecutorV2:
 
         return OrderOperationResult(outcome=outcome, snapshot=snapshot)
 
+    def place_fok_sell_order(
+        self,
+        wallet: WalletIdentity,
+        event_name: str,
+        side: OrderSide,
+        shares: float,
+        clob_token_ids: list[str],
+        fee_rate_bps: int,
+        condition_id: str,
+        fok_sell_price: float,
+    ) -> OrderOperationResult:
+        """
+        单次 FOK 纯市价单抛售。
+
+        与 GTC 抛售单的区别：FOK 要求"全成或全撤"，撮合价 >= fok_sell_price 时全部成交，否则整笔取消。
+        价格语义：SELL 表示愿意以 >= fok_sell_price 的价格卖出（即最差接受价）。
+        用于 _process_fok_retrying 中持续重试，每次失败后回到 FOK_RETRYING 状态等待重试。
+
+        Args:
+            wallet: 钱包配置
+            event_name: 事件名称
+            side: 交易方向 (UP/DOWN)
+            shares: 抛售份额
+            clob_token_ids: YES/NO token IDs
+            fee_rate_bps: 费率
+            condition_id: 条件 ID
+            fok_sell_price: FOK SELL 的最差接受价
+
+        Returns:
+            OrderOperationResult: 包含执行结果和订单快照
+        """
+        outcome = self.executor.place_sell(
+            wallet=wallet,
+            event_name=event_name,
+            side=side,
+            shares=shares,
+            price=fok_sell_price,
+            clob_token_ids=clob_token_ids,
+            fee_rate_bps=fee_rate_bps,
+            condition_id=condition_id,
+            order_type_override="FOK",
+            post_only=False,
+        )
+
+        sell_amount_usd = shares * fok_sell_price
+
+        snapshot = self._build_snapshot(
+            wallet=wallet,
+            event_name=event_name,
+            side=side,
+            amount_usd=sell_amount_usd,
+            operation=OperationType.SELL,
+            outcome=outcome,
+            close_price=fok_sell_price,
+        )
+
+        return OrderOperationResult(outcome=outcome, snapshot=snapshot)
+
     def cancel_order(
         self,
         order_id: str | None,
@@ -441,31 +499,20 @@ class OrderExecutorV2:
         """
         处理单边成交：撤另一侧 + 挂 GTC 抛售单。
 
-        这是完整的单边成交处理流程：
-        1. 撤 stale 侧挂单
-        2. 刷新 stale 侧订单状态（检测是否在撤单前已成交）
-        3. 对 live 侧挂 GTC 抛售单
+        【⚠️ 死代码 / Deprecated】
+        本方法目前**没有任何 call site 调用**（已用 ``_process_handling_single`` + FOK 抛售取代），
+        保留仅为向后兼容与测试用例覆盖。
+        下游的 GTC 抛售路径（``place_gtc_sell_order`` + ``fixed_sell_price``）也已退出生产路径：
+        真实的单边成交处理见 ``TaskManager._process_handling_single``，它走 FOK 而非 GTC。
 
-        Args:
-            wallet: 已成交侧钱包
-            event_name: 事件名称
-            side: 已成交侧方向
-            filled_shares: 已成交份额
-            filled_amount_usd: 已成交金额
-            stale_wallet: 未成交侧钱包
-            stale_side: 未成交侧方向
-            stale_order_id: 未成交侧订单 ID
-            stale_amount_usd: 未成交侧订单金额
-            clob_token_ids: YES/NO token IDs
-            fee_rate_bps: 费率
-            condition_id: 条件 ID
+        因此即便本方法内仍使用 ``self.fixed_sell_price`` 作为占位默认值，**它不再决定任何真实
+        抛售价**。``SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE`` 配置项当前仅剩日志估算
+        与死代码占位两处残留用途，详见 ``TaskManager._execute_force_close`` / ``_process_handling_single``
+        顶部的 docstring 说明。
 
-        Returns:
-            (cancel_result, cancel_refresh_result, sell_result):
-            - cancel_result: 撤单结果
-            - cancel_refresh_result: 撤单后刷新结果（检测是否已成交）
-            - sell_result: 抛售单结果
+        如确认无需保留，可安全删除本方法及对应单元测试。
         """
+
         # 1. 尝试撤单
         cancel_result = self.cancel_order(
             order_id=stale_order_id,

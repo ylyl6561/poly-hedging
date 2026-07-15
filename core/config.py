@@ -55,6 +55,10 @@ CONFIG_SCHEMA = {
     "dual_wallet_force_close_window_sec": {"default": 40, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
     "dual_wallet_fak_close_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FAK_CLOSE_PRICE", "type": float, "help": "双边同时成交后 FAK 强平价格（0-1，建议 0.99）"},
+    "dual_wallet_fok_sell_price": {"default": 0.01, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FOK_SELL_PRICE", "type": float, "help": "FOK 纯市价单抛售价格：SELL 表示愿意以 >= 此价成交（撮合价≥此价即可成）。在 FOK_RETRYING 状态下作为动态递减的起点。"},
+    "dual_wallet_fok_sell_price_base": {"default": None, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FOK_SELL_PRICE_BASE", "type": float, "help": "FOK 抛售价动态递减的兜底基准（仅在 FOK_RETRYING 状态生效）。为 None 时退化为静态价模式（始终使用 fok_sell_price，不递减）。允许配置为 0 表示愿意白送平仓。"},
+    "dual_wallet_fok_sell_price_decay_window_sec": {"default": None, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FOK_SELL_PRICE_DECAY_WINDOW_SEC", "type": float, "help": "FOK 抛售价从初始值匀速递减到 base 的窗口时长（秒）。为 None 时回退为 force_close_window_sec（FOK_RETRYING 状态的最大停留时间）。仅当 base 已配置时才生效。"},
+    "dual_wallet_fok_interval_sec": {"default": 1, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FOK_INTERVAL_SEC", "type": float, "help": "FOK 抛售单失败后的重试间隔（秒）"},
     "dual_wallet_entry_up_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_UP_PRICE", "type": float, "help": "双钱包事件交易的 UP 初始挂单价格"},
     "dual_wallet_entry_down_price": {"default": 0.5, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_DOWN_PRICE", "type": float, "help": "双钱包事件交易的 DOWN 初始挂单价格"},
     "dual_wallet_entry_shares": {"default": 10.0, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_AMOUNT", "type": float, "help": "每钱包的下单 token 数量（每单固定数量，配合价格算出金额）"},
@@ -180,6 +184,7 @@ def resolve_config(skill_file):
     global POLYMARKET_ACCOUNTS
     global DUAL_WALLET_ENTRY_TIMEOUT_SEC, DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC
     global DUAL_WALLET_FIXED_SELL_PRICE, DUAL_WALLET_ENTRY_SHARES
+    global DUAL_WALLET_FAK_CLOSE_PRICE, DUAL_WALLET_FOK_SELL_PRICE, DUAL_WALLET_FOK_SELL_PRICE_BASE, DUAL_WALLET_FOK_SELL_PRICE_DECAY_WINDOW_SEC, DUAL_WALLET_FOK_INTERVAL_SEC
     global DUAL_WALLET_ENTRY_UP_PRICE, DUAL_WALLET_ENTRY_DOWN_PRICE
     global DUAL_WALLET_MAX_CONSECUTIVE_LOSSES, DUAL_WALLET_POLL_INTERVAL_SEC
     global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START
@@ -200,6 +205,11 @@ def resolve_config(skill_file):
     DUAL_WALLET_ENTRY_TIMEOUT_SEC = cfg.get("dual_wallet_entry_timeout_sec", 100)
     DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC = cfg.get("dual_wallet_force_close_window_sec", 60)
     DUAL_WALLET_FIXED_SELL_PRICE = cfg.get("dual_wallet_fixed_sell_price", 0.76)
+    DUAL_WALLET_FAK_CLOSE_PRICE = cfg.get("dual_wallet_fak_close_price", 0.99)
+    DUAL_WALLET_FOK_SELL_PRICE = cfg.get("dual_wallet_fok_sell_price", 0.01)
+    DUAL_WALLET_FOK_SELL_PRICE_BASE = cfg.get("dual_wallet_fok_sell_price_base", None)
+    DUAL_WALLET_FOK_SELL_PRICE_DECAY_WINDOW_SEC = cfg.get("dual_wallet_fok_sell_price_decay_window_sec", None)
+    DUAL_WALLET_FOK_INTERVAL_SEC = cfg.get("dual_wallet_fok_interval_sec", 3.0)
     DUAL_WALLET_ENTRY_UP_PRICE = cfg.get("dual_wallet_entry_up_price", 0.5)
     DUAL_WALLET_ENTRY_DOWN_PRICE = cfg.get("dual_wallet_entry_down_price", 0.5)
     DUAL_WALLET_ENTRY_SHARES = cfg.get("dual_wallet_entry_shares", 10.0)

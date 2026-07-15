@@ -13,11 +13,14 @@ import sys
 import json
 import time
 import io
+import logging
 from datetime import datetime, timezone
 from contextlib import redirect_stderr
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
+
+logger = logging.getLogger(__name__)
 
 from accounts import AccountContext, get_account_registry
 from core.constants import CLOB_API, TRADE_SOURCE, SKILL_SLUG
@@ -1214,6 +1217,8 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         return {"success": False, "error": f"py_clob_client_v2_unavailable:{e}"}
 
     MAX_RETRIES = 2
+    # 纯市价单强平场景：FOK 全成或全撤错误（订单簿厚度不够）→ 立即重试，最多 5 次
+    MAX_FOK_RETRY_ATTEMPTS = 5
 
     def _is_version_mismatch_error(result):
         """Check if the result indicates an order_version_mismatch error."""
@@ -1352,6 +1357,23 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
             "no match",
         )
         return any(marker in err_str for marker in no_liquidity_markers)
+
+    def _is_fok_not_fully_filled(value):
+        """Detect Polymarket FOK "全成或全撤" rejection.
+
+        The CLOB returns HTTP 400 with body
+        {"error":"order couldn't be fully filled. FOK orders are fully filled or killed."}
+        when a FOK / pure-market order can't be completely matched at the current book.
+        We treat this as a transient condition and retry immediately (up to 5 times).
+        """
+        err_str = str(value or "")
+        fok_markers = (
+            "order couldn't be fully filled",
+            "fok orders are fully filled or killed",
+            "couldn't be fully filled",
+            "fully filled or killed",
+        )
+        return any(marker.lower() in err_str.lower() for marker in fok_markers)
 
     def _is_auth_error(value):
         err_str = str(value or "").lower()
@@ -1507,8 +1529,14 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
             post_only=force_post_only,
         )
 
-    def _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=0):
-        """Execute trade with retry logic for version mismatch errors."""
+    def _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=0, fok_retry_count=0):
+        """Execute trade with retry logic for version mismatch and FOK-not-fully-filled errors.
+
+        - version_mismatch: retry up to MAX_RETRIES with linear backoff.
+        - FOK 全成或全撤（典型强平错误）: 立即重试，最多 MAX_FOK_RETRY_ATTEMPTS 次。
+          重试只在 is_pure_market=True（order_type_override=None）时启用，
+          因为只有强平 / 纯市价单路径上才会以 FOK 模式提交。
+        """
         if retry_count > 0:
             time.sleep(0.5 * retry_count)
 
@@ -1516,6 +1544,16 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         try:
             result = _create_and_post_order(client, token_id, order_type, options, order_price)
         except Exception as e:
+            # 纯市价单强平：FOK 全成或全撤 → 立即重试（最多 5 次，不 sleep）
+            if is_pure_market and fok_retry_count < MAX_FOK_RETRY_ATTEMPTS and _is_fok_not_fully_filled(e):
+                logger.warning(
+                    "[FOK_RETRY] 纯市价单强平遇到 FOK 全成或全撤 (attempt=%d/%d) token_id=%s err=%s — 立即重试",
+                    fok_retry_count + 1, MAX_FOK_RETRY_ATTEMPTS, token_id, e,
+                )
+                return _do_trade_with_retry(
+                    token_id, order_type, options, order_price,
+                    retry_count=retry_count, fok_retry_count=fok_retry_count + 1,
+                )
             if retry_count < MAX_RETRIES and _is_version_mismatch_error(e):
                 reset_direct_clob_client(account=account)
                 return _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=retry_count + 1)
@@ -1529,6 +1567,18 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
         if retry_count < MAX_RETRIES and _is_version_mismatch_error(result):
             reset_direct_clob_client(account=account)
             return _do_trade_with_retry(token_id, order_type, options, order_price, retry_count=retry_count + 1)
+
+        # 纯市价单强平：CLOB 也可能返回 dict 形式的 FOK 错误（不在异常路径上）
+        # 同样的规则：立即重试，最多 5 次。
+        if is_pure_market and fok_retry_count < MAX_FOK_RETRY_ATTEMPTS and _is_fok_not_fully_filled(result):
+            logger.warning(
+                "[FOK_RETRY] 纯市价单强平返回 FOK 全成或全撤 (attempt=%d/%d) token_id=%s result=%s — 立即重试",
+                fok_retry_count + 1, MAX_FOK_RETRY_ATTEMPTS, token_id, result,
+            )
+            return _do_trade_with_retry(
+                token_id, order_type, options, order_price,
+                retry_count=retry_count, fok_retry_count=fok_retry_count + 1,
+            )
 
         return result
 
@@ -1573,6 +1623,11 @@ def direct_polymarket_trade(side, amount, price, clob_token_ids, fee_rate_bps=0,
 
     except Exception as e:
         err_str = str(e)
+        if is_pure_market and _is_fok_not_fully_filled(e):
+            logger.error(
+                "[FOK_RETRY_EXHAUSTED] 纯市价单强平 FOK 全成或全撤重试 %d 次后仍然失败 token_id=%s err=%s",
+                MAX_FOK_RETRY_ATTEMPTS, token_id, e,
+            )
         if "order_version_mismatch" in err_str or "version_mismatch" in err_str:
             # Force fresh client on retry
             reset_direct_clob_client(account=account)

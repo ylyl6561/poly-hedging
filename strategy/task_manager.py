@@ -299,7 +299,14 @@ class TaskManagerConfig:
     poll_interval_sec: float = 0.6
     entry_timeout_sec: int = 92  # 从 core.config.DUAL_WALLET_ENTRY_TIMEOUT_SEC 读取
     force_close_window_sec: int = 88  # 从 core.config.DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC 读取
-    fixed_sell_price: float = 0.6  # 从 core.config.DUAL_WALLET_FIXED_SELL_PRICE 读取
+    fixed_sell_price: float = 0.65  # 从 core.config.DUAL_WALLET_FIXED_SELL_PRICE 读取
+                                  # 【⚠️ 语义已变更】此字段不再决定真实抛售价！
+                                  # 真实抛售已切换到 FOK（fok_sell_price 决定）。
+                                  # 残留用途仅限：1) sell_shares 兜底估算；
+                                  # 2) GTC 抛售失败/跳过时的留痕快照 close_price；
+                                  # 3) _execute_force_close 的日志估算金额。
+                                  # 配置项 SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE
+                                  # 保留仅为向后兼容，不要再用来调真实抛售价格。
     market_close_price: float = 0.99  # 从 core.config.DUAL_WALLET_MARKET_CLOSE_PRICE 读取
     max_consecutive_losses: int = 2
     min_seconds_before_start: int = 15  # 从 core.config.DUAL_WALLET_MIN_SECONDS_BEFORE_START 读取
@@ -310,6 +317,12 @@ class TaskManagerConfig:
     settlement_poll_timeout_sec: int = 180
     settlement_poll_interval_sec: int = 20
     settlement_stable_rounds: int = 3
+
+    # FOK 抛售单重试配置
+    fok_sell_price: float = 0.01  # FOK SELL 最差接受价：撮合价 >= 此价即可全成（动态递减起点）
+    fok_sell_price_base: float | None = None  # 动态递减兜底基准（None = 静态模式，不递减）
+    fok_sell_price_decay_window_sec: float | None = None  # 递减窗口（秒）；None 时回退 force_close_window_sec
+    fok_interval_sec: float = 3.0  # FOK 失败后重试间隔（秒）
 
     # 日志配置
     progress_log_interval_sec: float = 30.0
@@ -331,6 +344,18 @@ class TaskManagerConfig:
             settlement_poll_timeout_sec=int(config.get("dual_wallet_settlement_poll_timeout_sec", 180)),
             settlement_poll_interval_sec=int(config.get("dual_wallet_settlement_poll_interval_sec", 20)),
             settlement_stable_rounds=int(config.get("dual_wallet_settlement_stable_rounds", 3)),
+            fok_sell_price=float(config.get("dual_wallet_fok_sell_price", 0.01)),
+            fok_sell_price_base=(
+                float(config["dual_wallet_fok_sell_price_base"])
+                if config.get("dual_wallet_fok_sell_price_base") is not None
+                else None
+            ),
+            fok_sell_price_decay_window_sec=(
+                float(config["dual_wallet_fok_sell_price_decay_window_sec"])
+                if config.get("dual_wallet_fok_sell_price_decay_window_sec") is not None
+                else None
+            ),
+            fok_interval_sec=float(config.get("dual_wallet_fok_interval_sec", 3.0)),
             progress_log_interval_sec=float(config.get("dual_wallet_progress_log_interval_sec", 30.0)),
             enable_feishu=bool(config.get("dual_wallet_enable_feishu", True)),
         )
@@ -762,6 +787,8 @@ class TaskManager:
             self._process_waiting_entry(task)
         elif state == EventTaskState.HANDLING_SINGLE:
             self._process_handling_single(task)
+        elif state == EventTaskState.FOK_RETRYING:
+            self._process_fok_retrying(task)
         elif state == EventTaskState.WAITING_CLOSE_WINDOW:
             self._process_waiting_close_window(task)
         elif state == EventTaskState.FORCE_CLOSING:
@@ -1087,8 +1114,14 @@ class TaskManager:
         处理 HANDLING_SINGLE 状态 - 单边成交处理（挂抛售单，不撤单）。
 
         业务逻辑：
-        - 已成交侧：挂 GTC 抛售单
+        - 已成交侧：先尝试 FOK 抛售（place_fok_sell_order），失败 → FOK_RETRYING 持续重试
         - 未成交侧：保留挂单，不撤单
+
+        【⚠️ 关于 fixed_sell_price】
+        本方法内仍引用 ``self.config.fixed_sell_price``（仅用于 sell_shares 兜底估算与
+        失败/跳过时的留痕快照 close_price），但**它不再决定真实抛售价**。
+        真实抛售价由 ``self.config.fok_sell_price`` 控制（FOK 撮合价 >= 此价即视为可成交）。
+        详见 ``TaskManagerConfig.fixed_sell_price`` 字段上的语义变更说明。
         """
         up_wallet = task.get_up_wallet()
         down_wallet = task.get_down_wallet()
@@ -1246,15 +1279,23 @@ class TaskManager:
                 history_list = task.order_snapshots.setdefault(live_wallet.wallet_id, [])
                 history_list.append(skip_snapshot)
             else:
-                sell_result = self._order_exec.place_gtc_sell_order(
+                # 【动态价起点】记录首次 FOK 尝试的瞬时，作为后续动态递减的 t=0 起点。
+                # 与 fok_retry_context.started_at 的区别：
+                # - 本字段在首次 FOK 尝试前就写出来（无论成功失败），覆盖式更新。
+                # - 这样后续若进入 FOK_RETRYING（首次失败），读到的就是首次 FOK 真实起点时间；
+                #   而非首次失败时才记录的"进入 retry 状态的时间"。
+                # - 如果彻底没有（某些诡异路径），再兜底用 ctx.started_at / last_attempt_at / now。
+                task.metadata["fok_sell_started_at"] = datetime.now(timezone.utc).isoformat()
+
+                sell_result = self._order_exec.place_fok_sell_order(
                     wallet=live_wallet,
                     event_name=task.event_name,
                     side=live_side,
                     shares=actual_sell_shares,
-                    price=self.config.fixed_sell_price,
                     clob_token_ids=task.clob_token_ids,
                     fee_rate_bps=fee_rate_bps,
                     condition_id=task.condition_id,
+                    fok_sell_price=self.config.fok_sell_price,
                 )
 
                 # 记录抛售单快照
@@ -1267,7 +1308,7 @@ class TaskManager:
                         snapshot=sell_result.snapshot,
                         operation="SELL",
                         error=sell_result.outcome.error if not sell_result.outcome.success else "",
-                        note="sell_order",
+                        note="sell_order_fok",
                     )
 
                 # 检查挂单是否成功
@@ -1279,21 +1320,22 @@ class TaskManager:
                 side_str = live_side.value if live_side else "?"
                 if sell_success:
                     print(
-                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单已挂: "
-                        f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f} "
+                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 FOK 抛售单已成交: "
+                        f"{actual_sell_shares:.2f} 股 @ ${self.config.fok_sell_price:.4f}+ "
                         f"(balance={live_balance_shares:.4f}, filled={live_filled_shares:.4f}, order_id={sell_order_id})"
                     )
                     TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-                    TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares)
+                    TradeLogger.sell_order_placed(live_wallet.wallet_name, side_str, self.config.fok_sell_price, actual_sell_shares)
                 else:
-                    # 挂单失败：记录失败原因
+                    # FOK 抛售失败：进入 FOK_RETRYING 持续重试状态
                     print(
-                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 GTC 抛售单挂单失败: "
-                        f"{actual_sell_shares:.2f} 股 @ ${self.config.fixed_sell_price:.2f}, "
-                        f"原因: {sell_err}。强平窗口将直接对该侧执行强平。"
+                        f"   [单边] [{live_wallet.wallet_name}] {side_str} 侧 FOK 抛售失败 (attempt 1): "
+                        f"{actual_sell_shares:.2f} 股, 原因: {sell_err}。"
+                        f"进入 FOK_RETRYING，将每 {self.config.fok_interval_sec}s 重试一次，"
+                        f"同时监测另一钱包 entry 是否成交。"
                     )
                     TradeLogger.single_filled(live_wallet.wallet_name, side_str, live_filled_shares)
-                    TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fixed_sell_price, actual_sell_shares, sell_err)
+                    TradeLogger.sell_order_failed(live_wallet.wallet_name, side_str, self.config.fok_sell_price, actual_sell_shares, sell_err)
 
                     # 诊断：如果失败原因包含 balance，打印诊断信息
                     if "balance" in sell_err.lower():
@@ -1303,11 +1345,27 @@ class TaskManager:
                                 wallet=live_wallet,
                                 side=live_side,
                                 shares_attempted=actual_sell_shares,
-                                price_attempted=self.config.fixed_sell_price,
+                                price_attempted=self.config.fok_sell_price,
                                 error_text=sell_err,
                             )
                         except Exception:
                             pass
+
+                    # 写入 FOK 重试上下文（供 _process_fok_retrying 使用）
+                    task.metadata["fok_retry_context"] = {
+                        "live_wallet_id": live_wallet.wallet_id,
+                        "stale_wallet_id": stale_wallet.wallet_id,
+                        "side": live_side.value if live_side else None,
+                        "shares": float(actual_sell_shares),
+                        "fee_rate_bps": int(fee_rate_bps),
+                        "attempts": 0,  # _process_fok_retrying 第一次会自增到 1
+                        "started_at": datetime.now(timezone.utc).isoformat(),  # 动态价递减的 t=0 起点
+                        "last_attempt_at": datetime.now(timezone.utc).isoformat(),
+                        "last_error": sell_err,
+                    }
+                    task.trigger_reason = "single_side_fill_pending_close"
+                    task.transition_to(EventTaskState.FOK_RETRYING, "FOK 抛售失败，进入持续重试")
+                    return
 
         # 打印 stale 侧状态（用于调试）
         stale_order = task.get_order(stale_wallet.wallet_id)
@@ -1319,6 +1377,298 @@ class TaskManager:
 
         task.trigger_reason = "single_side_fill_pending_close"
         task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "单边处理完成，等待强平窗口")
+
+    # ===== FOK 动态价 helper =====
+
+    @staticmethod
+    def _parse_fok_started_at(task: EventTask | None, ctx: dict) -> datetime | None:
+        """
+        从多个候选字段中解析 FOK 动态递减的起点时间。
+
+        优先级：
+            1) ``task.metadata["fok_sell_started_at"]`` — 首次 FOK 尝试前的瞬时
+               （最贴近"第一次 FOK 时间"的语义）。
+            2) ``ctx["started_at"]`` — 首次失败进入 FOK_RETRYING 时记录的时间。
+            3) ``ctx["last_attempt_at"]`` — 最近一次 FOK 尝试时间。
+
+        任一字段缺失/格式错都返回 None，由调用方再决定是否兜底为 now()。
+        """
+        candidates: list[str | None] = []
+        if task is not None:
+            candidates.append(task.metadata.get("fok_sell_started_at"))
+        candidates.append(ctx.get("started_at"))
+        candidates.append(ctx.get("last_attempt_at"))
+
+        for raw in candidates:
+            if not raw:
+                continue
+            try:
+                ts = datetime.fromisoformat(raw)
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                return ts
+            except Exception:
+                continue
+        return None
+
+    def _compute_dynamic_fok_price(self, ctx: dict, now: datetime, task: EventTask | None = None) -> tuple[float, dict]:
+        """
+        计算 FOK 抛售的 effective price（元组：(effective_price, debug_meta)）。
+
+        规则：
+        - 仅当 self.config.fok_sell_price_base 已配置（非 None）时启用动态递减。
+        - 起点 = self.config.fok_sell_price（ctx 写入时的初始价，固定不变）
+        - 终点 = self.config.fok_sell_price_base
+        - 窗口 = self.config.fok_sell_price_decay_window_sec；None 时回退 force_close_window_sec。
+        - 【起点时间】优先级：
+              1) ``task.metadata["fok_sell_started_at"]``（首次 FOK 尝试瞬时，最准确）
+              2) ``ctx["started_at"]``（首次失败写入 FOK_RETRYING 的时间）
+              3) ``ctx["last_attempt_at"]``
+              4) ``now``
+          这样保证 effective_price 从"第一次 FOK 时间"开始到窗口终点的线性递减，
+          覆盖"首次 FOK 失败后进入 FOK_RETRYING"与"首次 FOK 成功"两条路径。
+        - 公式：progress = clamp(elapsed / window, 0, 1)
+                effective = initial - (initial - base) * progress
+        - 行为：严格线性插值。elapsed=0 → initial；elapsed=window → base；二选一不会。
+        - BASE 缺失（None）→ 直接返回 self.config.fok_sell_price（静态模式，与原行为一致）。
+        - progress 溢出（>1）→ 钳制到 base（最少 base，不会更便宜）。
+        """
+        initial = float(self.config.fok_sell_price)
+        base = self.config.fok_sell_price_base
+        if base is None:
+            # 静态模式：与 BASE 未配置时行为完全一致
+            return initial, {"mode": "static", "effective_price": initial}
+
+        # 解析起点时间（按优先级降级）
+        started_at = self._parse_fok_started_at(task, ctx)
+        if started_at is None:
+            started_at = now  # 最后兜底
+
+        elapsed = max(0.0, (now - started_at).total_seconds())
+
+        # 窗口：None → 默认 force_close_window_sec
+        window_raw = self.config.fok_sell_price_decay_window_sec
+        if window_raw is None:
+            window = float(self.config.force_close_window_sec)
+        else:
+            window = float(window_raw)
+        window = max(1.0, window)  # 防止除零 / 负数
+
+        progress = elapsed / window
+        if progress < 0.0:
+            progress = 0.0
+        elif progress > 1.0:
+            progress = 1.0
+
+        # 注意：base 可能 >= initial（用户故意配高），仍允许；此时 price 会"上升"，等价于价格保护
+        effective = initial - (initial - float(base)) * progress
+        # 兜底钳制：不允许跌出 [min(initial, base), max(initial, base)]
+        lo = min(initial, float(base))
+        hi = max(initial, float(base))
+        if effective < lo:
+            effective = lo
+        elif effective > hi:
+            effective = hi
+
+        return float(effective), {
+            "mode": "dynamic",
+            "effective_price": float(effective),
+            "initial": initial,
+            "base": float(base),
+            "window_sec": window,
+            "elapsed_sec": elapsed,
+            "progress": progress,
+        }
+
+    def _process_fok_retrying(self, task: EventTask) -> None:
+        """
+        处理 FOK_RETRYING 状态：FOK 抛售单失败后的持续重试。
+
+        每个 tick 都会进入此方法（非阻塞）。流程：
+        1. 刷新订单状态（让 stale 钱包 entry 成交状态被及时捕获）
+        2. 检查另一钱包 (stale) entry 是否已成交 → 若成交，结束 FOK 重试
+        3. 检查强平窗口是否到达 → 若到达，进入 FORCE_CLOSING 兜底
+        4. 检查事件是否已结束 → 若结束，进入 SETTLING_OUTCOME
+        5. 检查距离上次 FOK 尝试是否已过 fok_interval_sec → 若未到，跳出本次 tick
+        6. 再次尝试一次 FOK SELL
+           - 成功 → WAITING_CLOSE_WINDOW（让强平兜底收尾）
+           - 失败 → 留在 FOK_RETRYING，下次 tick 再试
+
+        【时序与节流说明】
+        - tick 周期 ≈ 100ms（run_loop poll_interval）。
+        - 真正发起 FOK 的周期由 fok_interval_sec 控制（默认 3s），与 _refresh_order_statuses 的
+          250ms 节流互不影响：FOK 周期就是 fok_interval_sec（不是两者相加）。
+          _refresh_order_statuses 的 250ms 节流只限制 CLOB API 拉取频率。
+        - stale 钱包 entry 成交的最坏感知延迟 ≈ fok_interval_sec（前提是网络正常）。
+
+        【自动取消 / 兜底说明】
+        本状态会自动让位给后续阶段，不会出现"FOK 一直在跑而下游强平也跑"的双重下单：
+          - 强平窗口到达 → FORCE_CLOSING → _execute_force_close 走纯市价单（不是 FOK）
+          - 事件已结束   → SETTLING_OUTCOME
+          - 异常        → FAILED
+        所以"后续流程对 FOK 的处理"无需在本方法里显式取消，状态机会自动让位。
+
+        【动态递减价格说明】
+        - 当 ``self.config.fok_sell_price_base`` 已配置（非 None）时，每次重试使用 effective_price
+          而非固定 ``self.config.fok_sell_price``。
+        - effective_price 从 initial 匀速递减到 base，窗口由
+          ``self.config.fok_sell_price_decay_window_sec`` 决定（None 时回退
+          ``self.config.force_close_window_sec``，即 FOK_RETRYING 状态最大停留时间）。
+        - 起点时间为**首次 FOK 尝试瞬时**（HANDLING_SINGLE 内发起首次 FOK 之前写入
+          ``task.metadata["fok_sell_started_at"]``），而不是"首次失败"或"进入 retry"的时间。
+          这样首次 FOK 立刻成功的路径与首次失败的路径共用同一个起点语义；
+          若该字段缺失则兜底用 ctx.started_at / last_attempt_at。
+        - 该递减**只在 FOK_RETRYING 状态下生效**；HANDLING_SINGLE 内首次 FOK 仍使用
+          ``self.config.fok_sell_price``（不递减），但会刷新 ``fok_sell_started_at``。
+        - 当 ``self.config.fok_sell_price_base`` 为 None 时，effective_price 退化为
+          ``self.config.fok_sell_price``（原静态行为，配置项缺失不影响兼容）。
+        """
+        ctx = task.metadata.get("fok_retry_context")
+        if not ctx:
+            # 没有上下文（异常路径）→ 退回等待强平窗口
+            print(f"   [FOK_RETRY] {task.event_name}: 缺少 fok_retry_context，回退到 WAITING_CLOSE_WINDOW")
+            task.trigger_reason = "single_side_fill_pending_close"
+            task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "FOK 重试上下文缺失，兜底等待强平")
+            return
+
+        live_wallet_id = ctx["live_wallet_id"]
+        stale_wallet_id = ctx["stale_wallet_id"]
+
+        # 1. 刷新订单状态（捕获 stale 钱包 entry 成交 / live 侧 FOK 真实状态）
+        try:
+            self._refresh_order_statuses(task)
+        except Exception:
+            pass
+
+        # 2. 检查另一钱包 (stale) entry 是否已成交 → 结束 FOK 重试
+        stale_order = task.get_order(stale_wallet_id)
+        stale_filled_now = stale_order and stale_order.status == OrderStatus.FILLED.value
+        if stale_filled_now:
+            print(
+                f"   [FOK_RETRY] {task.event_name}: 检测到另一钱包 (stale={stale_wallet_id}) entry 已成交，"
+                f"结束 FOK 抛售重试（已尝试 {ctx.get('attempts', 0)} 次）"
+            )
+            task.trigger_reason = "both_sides_filled_force_closed"
+            task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "另一钱包成交，结束 FOK 重试")
+            return
+
+        # 3. 检查强平窗口 / 事件结束（沿用 waiting_close_window 的判定逻辑）
+        end_time_utc = task.end_time
+        if end_time_utc.tzinfo is None:
+            end_time_utc = end_time_utc.astimezone(timezone.utc)
+        now = datetime.now(timezone.utc)
+        remaining_to_end = (end_time_utc - now).total_seconds()
+        within_window = remaining_to_end <= task.close_window_sec
+
+        if remaining_to_end <= 0:
+            print(f"   [FOK_RETRY] {task.event_name}: 事件已结束，停止 FOK 重试")
+            task.trigger_reason = "event_already_ended"
+            task.transition_to(EventTaskState.SETTLING_OUTCOME, "事件结束")
+            return
+
+        if within_window:
+            print(
+                f"   [FOK_RETRY] {task.event_name}: 进入强平窗口 (剩 {remaining_to_end:.1f}s)，"
+                f"停止 FOK 重试，转强平兜底"
+            )
+            task.trigger_reason = "force_close_window"
+            task.transition_to(EventTaskState.FORCE_CLOSING, "强平窗口到达")
+            return
+
+        # 4. 检查重试间隔
+        try:
+            last_attempt_at = datetime.fromisoformat(ctx["last_attempt_at"])
+            if last_attempt_at.tzinfo is None:
+                last_attempt_at = last_attempt_at.replace(tzinfo=timezone.utc)
+        except Exception:
+            last_attempt_at = now
+
+        elapsed = (now - last_attempt_at).total_seconds()
+        interval = max(0.1, float(self.config.fok_interval_sec))
+        if elapsed < interval:
+            # 还没到下一次重试时间，本 tick 直接返回（保持 FOK_RETRYING 状态）
+            return
+
+        # 5. 再次尝试一次 FOK SELL
+        live_wallet = next((w for w in task.wallets if w.wallet_id == live_wallet_id), None)
+        if not live_wallet:
+            print(f"   [FOK_RETRY] {task.event_name}: 找不到 live 钱包 {live_wallet_id}，回退")
+            task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "live 钱包丢失，兜底")
+            return
+
+        live_side = task.side_by_wallet_id.get(live_wallet_id)
+        if live_side is None:
+            task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "live 侧丢失，兜底")
+            return
+
+        shares = float(ctx["shares"])
+        fee_rate_bps = int(ctx.get("fee_rate_bps", 0))
+        ctx["attempts"] = int(ctx.get("attempts", 0)) + 1
+        ctx["last_attempt_at"] = now.isoformat()
+
+        # 计算本次重试的 effective FOK 价（动态递减 or 静态）
+        effective_price, price_meta = self._compute_dynamic_fok_price(ctx, now, task=task)
+        if price_meta["mode"] == "dynamic":
+            print(
+                f"   [FOK_RETRY] {task.event_name}: 第 {ctx['attempts']} 次尝试 FOK SELL "
+                f"{shares:.2f} 股 @ ${effective_price:.4f}+ "
+                f"(动态价: 初始 ${price_meta['initial']:.4f} → 兜底 ${price_meta['base']:.4f}, "
+                f"已过 {price_meta['elapsed_sec']:.1f}s/{price_meta['window_sec']:.1f}s, "
+                f"progress={price_meta['progress']:.2f}, 另一钱包尚未成交)"
+            )
+        else:
+            print(
+                f"   [FOK_RETRY] {task.event_name}: 第 {ctx['attempts']} 次尝试 FOK SELL "
+                f"{shares:.2f} 股 @ ${effective_price:.4f}+ (静态价, 另一钱包尚未成交)"
+            )
+
+        result = self._order_exec.place_fok_sell_order(
+            wallet=live_wallet,
+            event_name=task.event_name,
+            side=live_side,
+            shares=shares,
+            clob_token_ids=task.clob_token_ids,
+            fee_rate_bps=fee_rate_bps,
+            condition_id=task.condition_id,
+            fok_sell_price=effective_price,
+        )
+
+        # 记录快照
+        if result.snapshot:
+            result.snapshot.status = OrderStatus.FILLED.value if result.outcome.success else OrderStatus.FAILED.value
+            task.mark_order(result.snapshot)
+            self._record_journal_order(
+                task=task,
+                snapshot=result.snapshot,
+                operation="SELL",
+                error=result.outcome.error if not result.outcome.success else "",
+                note=f"sell_order_fok_retry_attempt_{ctx['attempts']}",
+            )
+
+        if result.outcome.success:
+            print(
+                f"   [FOK_RETRY] {task.event_name}: 第 {ctx['attempts']} 次 FOK SELL 成交！"
+                f" order_id={result.outcome.order_id}"
+            )
+            TradeLogger.sell_order_placed(
+                live_wallet.wallet_name, live_side.value if live_side else "?",
+                effective_price, shares,
+            )
+            task.metadata.pop("fok_retry_context", None)
+            task.trigger_reason = "single_side_fill_pending_close"
+            task.transition_to(EventTaskState.WAITING_CLOSE_WINDOW, "FOK 抛售成交，等待强平窗口")
+            return
+
+        # 失败：留在 FOK_RETRYING，下次 tick 再试
+        ctx["last_error"] = result.outcome.error or "未知错误"
+        print(
+            f"   [FOK_RETRY] {task.event_name}: 第 {ctx['attempts']} 次 FOK SELL 失败：{ctx['last_error']}。"
+            f"将在 {interval}s 后再次尝试。"
+        )
+        TradeLogger.sell_order_failed(
+            live_wallet.wallet_name, live_side.value if live_side else "?",
+            effective_price, shares, ctx["last_error"],
+        )
 
     def _process_waiting_close_window(self, task: EventTask) -> None:
         """
@@ -1880,14 +2230,31 @@ class TaskManager:
         task._last_refresh_time = time.monotonic()
 
     def _execute_force_close(self, task: EventTask) -> None:
-        """执行强平。"""
+        """
+        执行强平。
+
+        【⚠️ 关于 fixed_sell_price】
+        本方法内仍引用 ``self.config.fixed_sell_price`` 仅用于**日志估算**
+        （``close_amount = entry_filled_shares * self.config.fixed_sell_price`` 和
+        ``TradeLogger.force_close`` 打印）。真实强平走 ``execute_force_close``（纯市价单），
+        与 ``fixed_sell_price`` 无关。详见 ``TaskManagerConfig.fixed_sell_price`` 字段上的
+        语义变更说明。
+        """
         close_window_sec = task.close_window_sec
         selected_accounts = [f"{wallet.wallet_name}({wallet.account.account_id})" for wallet in task.wallets]
-        is_single_side_pending = task.trigger_reason == "single_side_fill_pending_close"
+
+        # 【历史 bug fix】该字段历史上用 `task.trigger_reason == "single_side_fill_pending_close"`
+        # 判断，但 FOK_RETRYING 转 FORCE_CLOSING 时 (line 附近 trigger_reason = "force_close_window")
+        # 会把该字符串覆盖，导致 _execute_force_close 内的 is_single_side_pending=False，
+        # 走错 entry_filled_shares 兜底分支，把曾经 FOK-filled 的 entry 仓位误判为"无仓位"。
+        # 现在的判定基于更稳的事实：``task.first_fill_wallet_id is not None`` ——
+        # 该字段在 ``_process_entry`` 检测到单边成交时设置一次，不会被后续状态转移清除。
+        had_single_side_fill = task.first_fill_wallet_id is not None
+        is_single_side_pending = had_single_side_fill  # 向后兼容 alias
 
         # 获取每个钱包的初始 entry 成交份额
         entry_filled_by_wallet: dict[str, float] = {}
-        if is_single_side_pending and task.first_fill_wallet_id:
+        if had_single_side_fill:
             for wallet in task.wallets:
                 for snap in task.get_order_history(wallet.wallet_id):
                     if snap.operation == OperationType.PLACE and snap.status == OrderStatus.FILLED.value:
@@ -1964,6 +2331,19 @@ class TaskManager:
                             break
             elif order:
                 entry_filled_shares = coalesce_filled_shares(order.filled_shares, order.shares)
+
+            # 【历史 bug fix 防御性兜底】
+            # 上述分支如果走到 elif 且 order 是 SELL 抛售单（filled_shares=0），会把 entry_filled_shares
+            # 误算为 0。再次扫一遍历史：只要该钱包曾有过 PLACE+FILLED 的 entry 订单，
+            # 就以历史的 entry 仓位为准（毕竟事件未结算前，token 仍在 CLOB 持仓里）。
+            if entry_filled_shares <= 0 and had_single_side_fill:
+                for snap in task.get_order_history(wallet.wallet_id):
+                    if snap.operation == OperationType.PLACE and snap.status == OrderStatus.FILLED.value:
+                        entry_filled_shares = max(
+                            entry_filled_shares,
+                            coalesce_filled_shares(snap.filled_shares, snap.shares),
+                        )
+                        break
 
             # 判断当前挂单类型
             is_sell_order = order and order.operation == OperationType.SELL
@@ -2133,7 +2513,14 @@ class TaskManager:
                             print(f"   🗑️ {wallet_name}: 取消 GTC 抛售单（entry 无仓位）")
                         else:
                             print(f"   🗑️ {wallet_name}: GTC 抛售单已取消")
-                    print(f"   ⏭️ {wallet_name}: 跳过（entry 无仓位或已对冲）")
+                    print(
+                        f"   ⏭️ {wallet_name}: 跳过（entry 无仓位或已对冲）"
+                        f" | 诊断: entry_filled_shares={entry_filled_shares}, "
+                        f"order={order and order.operation.value if order else None}, "
+                        f"order_status={order and order.status}, "
+                        f"is_single_side_pending={is_single_side_pending}, "
+                        f"trigger_reason={task.trigger_reason}"
+                    )
                 continue
 
             if cancel_already_terminal:

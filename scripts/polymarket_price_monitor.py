@@ -337,6 +337,8 @@ def parse_args():
         help="[Deprecated] Single-window shorthand. Overrides --windows if set.",
     )
     parser.add_argument("--interval", type=float, default=1.0, help="Sampling interval in seconds")
+    parser.add_argument("--browser-refresh", type=int, default=1800,
+                        help="Browser auto-reload interval in seconds (default 1800 = 30 min)")
     parser.add_argument("--output-dir", default="runs/price_monitor", help="Output directory for reports")
     return parser.parse_args()
 
@@ -676,6 +678,7 @@ def main():
             generate_report(
                 data_by_window, report_path, args.asset, windows,
                 run_id, interval=args.interval,
+                browser_refresh_seconds=args.browser_refresh,
             )
             now = time.time()
             if now - last_print > 10:
@@ -716,11 +719,13 @@ def main():
     generate_report(
         data_by_window, report_path, args.asset, windows,
         run_id, interval=args.interval,
+        browser_refresh_seconds=args.browser_refresh,
     )
     print(f"  Final report: {report_path}")
 
 
-def generate_report(data_by_window, report_path, asset, windows, run_id, interval=1.0):
+def generate_report(data_by_window, report_path, asset, windows, run_id, interval=1.0,
+                     browser_refresh_seconds=1800):
     """Generate an HTML report with **one chart per window**.
 
     Args:
@@ -730,6 +735,8 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
         windows: List of window labels (e.g. ``["5m", "15m", "1h"]``).
         run_id: Run identifier.
         interval: Sampling interval in seconds (for display).
+        browser_refresh_seconds: How often the browser should auto-reload
+            the page in seconds (default 1800 = 30 min).
     """
     # Color palette for markets (one per active slug per window)
     color_palette = [
@@ -978,11 +985,21 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
     if not down_table_rows_html:
         down_table_rows_html = '<tr><td colspan="8" style="text-align:center;color:#888;">暂无数据</td></tr>'
 
+    # Build browser_refresh_seconds into the template so the JS timer and
+    # the display label are always in sync.
+    if browser_refresh_seconds >= 3600:
+        refresh_display = f"{browser_refresh_seconds // 3600} hr"
+    elif browser_refresh_seconds >= 60:
+        refresh_display = f"{browser_refresh_seconds // 60} min"
+    else:
+        refresh_display = f"{browser_refresh_seconds} sec"
+
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="300">  <!-- Auto-refresh every 5 minutes -->
+    <!-- No <meta http-equiv="refresh"> here — browser auto-reload is handled
+         by a JS timer below so the interval can be configured at runtime. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polymarket 价格监控报告 - {', '.join(windows)}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1065,6 +1082,15 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
             padding: 6px 12px;
             margin: 10px 0;
             border-radius: 4px;
+        }}
+        .browser-reload-badge {{
+            font-size: 0.78em;
+            color: #666;
+            padding: 4px 10px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            margin-left: 8px;
         }}
         .chart-container {{
             position: relative;
@@ -1157,6 +1183,7 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
         <span class="label">📊 监控窗口: {', '.join(windows)}</span>
         <button onclick="manualRefresh()">🔄 手动刷新</button>
         <span class="last-refresh" id="lastRefresh">页面加载时间: 加载中…</span>
+        <span class="browser-reload-badge" id="browserReloadBadge" style="display:none;"></span>
     </div>
 
     <div class="summary">
@@ -1188,7 +1215,7 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
             </div>
             <div class="stat-box">
                 <div class="stat-label">页面刷新</div>
-                <div class="stat-value">5 min (auto)</div>
+                <div class="stat-value">{refresh_display} (auto)</div>
             </div>
         </div>
     </div>
@@ -1217,6 +1244,36 @@ def generate_report(data_by_window, report_path, asset, windows, run_id, interva
     <script>
         Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 {chart_init_js}
+
+        // === Browser auto-reload timer ===
+        // Reloads the page every N seconds to pick up the latest HTML snapshot
+        // written by the monitor process.  The interval is injected at generation
+        // time so the display label and the actual timer are always in sync.
+        (function() {{
+            const REFRESH_SECS = {browser_refresh_seconds};
+
+            // Countdown badge — updated every second so the user knows when
+            // the next reload will happen.
+            var _remaining = REFRESH_SECS;
+            setInterval(function() {{
+                _remaining -= 1;
+                var badge = document.getElementById('browserReloadBadge');
+                if (badge) {{
+                    if (_remaining > 0) {{
+                        var m = Math.floor(_remaining / 60);
+                        var s = _remaining % 60;
+                        badge.textContent = '⏳ ' + (m > 0 ? m + 'm ' : '') + s + 's 后自动刷新';
+                        badge.style.display = '';
+                    }} else {{
+                        badge.textContent = '🔄 正在刷新...';
+                    }}
+                }}
+                if (_remaining <= 0) {{
+                    _remaining = REFRESH_SECS;  // reset for next cycle
+                    window.location.reload(true);
+                }}
+            }}, 1000);
+        }})();
 
         // === Manual refresh button ===
         // Force the browser to refetch live.html from disk (does NOT restart

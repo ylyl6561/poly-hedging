@@ -294,7 +294,19 @@ OrderExecutorProtocol = Any  # 避免循环导入
 
 @dataclass
 class TaskManagerConfig:
-    """任务管理器配置。"""
+    """任务管理器配置。
+
+    All numeric fields are filled by :meth:`from_config_dict`.  When the
+    supplied ``config`` is the layered per-window dict produced by
+    :func:`core.config.resolve_window_overrides`, callers should pass
+    ``window="5m"`` (etc.) so the loader knows which ``<window>_<field>``
+    overrides to consult.
+    """
+
+    # Window label this config is targeting.  ``None`` means "no window tag",
+    # which matches the legacy single-window behaviour.
+    window: str | None = None
+
     # 轮询间隔
     poll_interval_sec: float = 0.6
     entry_timeout_sec: int = 92  # 从 core.config.DUAL_WALLET_ENTRY_TIMEOUT_SEC 读取
@@ -303,6 +315,14 @@ class TaskManagerConfig:
     market_close_price: float = 0.99  # 从 core.config.DUAL_WALLET_MARKET_CLOSE_PRICE 读取
     max_consecutive_losses: int = 2
     min_seconds_before_start: int = 15  # 从 core.config.DUAL_WALLET_MIN_SECONDS_BEFORE_START 读取
+
+    # Entry pricing / sizing (window-aware).  These let each event window use
+    # its own UP / DOWN initial price and per-wallet token quantity, which
+    # matters because 15m / 1h markets have very different liquidity profile
+    # from 5m windows.
+    entry_shares: float = 10.0
+    entry_up_price: float = 0.5
+    entry_down_price: float = 0.5
 
     # 结算配置
     outcome_poll_timeout_sec: int = 900
@@ -316,23 +336,55 @@ class TaskManagerConfig:
     enable_feishu: bool = True
 
     @classmethod
-    def from_config_dict(cls, config: dict) -> "TaskManagerConfig":
-        """从配置字典创建。"""
+    def from_config_dict(cls, config: dict, window: str | None = None) -> "TaskManagerConfig":
+        """从配置字典创建。
+
+        The lookup order is:
+        1. ``dual_wallet_<field>`` override on ``config`` (user setting)
+        2. ``WINDOW_BASELINE_CONFIG[window][field]`` window-specific baseline
+           (only consulted when ``window`` is passed)
+        3. Hard-coded fallback inside this method (matches historical behaviour)
+
+        ``run_event`` 一次只处理一个事件，所以所有参数沿用统一的
+        ``dual_wallet_<field>`` 名称，不需要按窗口区分。
+        """
+        cfg = config or {}
+        # Local import avoids a top-level circular dependency during module init.
+        from core.constants import WINDOW_BASELINE_CONFIG
+
+        window_key = (window or "").strip().lower()
+        baseline_bucket = WINDOW_BASELINE_CONFIG.get(window_key, {}) if window_key else {}
+
+        def pick(field: str, fallback, cast=float):
+            """Lookup helper that tries every plausible location."""
+            cfg_key = f"dual_wallet_{field}"
+            # 1. Explicit dual_wallet_<field> override.
+            if cfg_key in cfg and cfg[cfg_key] is not None:
+                return cast(cfg[cfg_key])
+            # 2. Window-specific baseline (only if window was provided).
+            if field in baseline_bucket and baseline_bucket[field] is not None:
+                return cast(baseline_bucket[field])
+            return fallback
+
         return cls(
-            poll_interval_sec=float(config.get("dual_wallet_poll_interval_sec", 1)),
-            entry_timeout_sec=int(config.get("dual_wallet_entry_timeout_sec", 92)),
-            force_close_window_sec=int(config.get("dual_wallet_force_close_window_sec", 88)),
-            fixed_sell_price=float(config.get("dual_wallet_fixed_sell_price", 0.6)),
-            market_close_price=float(config.get("dual_wallet_fak_close_price", 0.99)),
-            max_consecutive_losses=int(config.get("dual_wallet_max_consecutive_losses", 2)),
-            min_seconds_before_start=int(config.get("dual_wallet_min_seconds_before_start", 15)),
-            outcome_poll_timeout_sec=int(config.get("dual_wallet_outcome_poll_timeout_sec", 900)),
-            outcome_poll_interval_sec=int(config.get("dual_wallet_outcome_poll_interval_sec", 5)),
-            settlement_poll_timeout_sec=int(config.get("dual_wallet_settlement_poll_timeout_sec", 180)),
-            settlement_poll_interval_sec=int(config.get("dual_wallet_settlement_poll_interval_sec", 20)),
-            settlement_stable_rounds=int(config.get("dual_wallet_settlement_stable_rounds", 3)),
-            progress_log_interval_sec=float(config.get("dual_wallet_progress_log_interval_sec", 30.0)),
-            enable_feishu=bool(config.get("dual_wallet_enable_feishu", True)),
+            window=window,
+            poll_interval_sec=float(pick("poll_interval_sec", 1)),
+            entry_timeout_sec=int(pick("entry_timeout_sec", 92)),
+            force_close_window_sec=int(pick("force_close_window_sec", 88)),
+            fixed_sell_price=float(pick("fixed_sell_price", 0.6)),
+            market_close_price=float(pick("fak_close_price", 0.99)),
+            max_consecutive_losses=int(pick("max_consecutive_losses", 2)),
+            min_seconds_before_start=int(pick("min_seconds_before_start", 15)),
+            entry_shares=float(pick("entry_shares", 10.0)),
+            entry_up_price=float(pick("entry_up_price", 0.5)),
+            entry_down_price=float(pick("entry_down_price", 0.5)),
+            outcome_poll_timeout_sec=int(pick("outcome_poll_timeout_sec", 900)),
+            outcome_poll_interval_sec=int(pick("outcome_poll_interval_sec", 5)),
+            settlement_poll_timeout_sec=int(pick("settlement_poll_timeout_sec", 180)),
+            settlement_poll_interval_sec=int(pick("settlement_poll_interval_sec", 20)),
+            settlement_stable_rounds=int(pick("settlement_stable_rounds", 3)),
+            progress_log_interval_sec=float(cfg.get("dual_wallet_progress_log_interval_sec", 30.0)),
+            enable_feishu=bool(cfg.get("dual_wallet_enable_feishu", True)),
         )
 
 
@@ -355,6 +407,7 @@ class TaskManager:
         dry_run: bool = False,
         structured_log: Any = None,
         state_manager: TradeStateManager | None = None,
+        window: str | None = None,
     ):
         self.config = config
         self.executor = executor
@@ -364,6 +417,12 @@ class TaskManager:
         self.structured_log = structured_log
         self._is_paper = dry_run  # 用于飞书通知判断
         self._state_manager = state_manager or get_trade_state_manager()
+
+        # Per-window tag.  When set, the manager scopes halt reasons / loss
+        # tracking / Feishu notifications with the window label so the operator
+        # can tell which slot was halted.  ``None`` matches the legacy
+        # single-window behaviour.
+        self.window = window or (config.window if config else None)
 
         # 订单执行器 V2
         self._order_exec = OrderExecutorV2(
@@ -791,8 +850,17 @@ class TaskManager:
         time_to_event_start = (start_time_utc - now).total_seconds() if start_time_utc else 0
 
         # 检查最小提前量
-        if time_to_event_start > 0 and time_to_event_start < self.config.min_seconds_before_start:
-            print(f"   [跳过] 时间不足: 距开始 {time_to_event_start:.0f}s < {self.config.min_seconds_before_start}s")
+        # min_seconds_before_start 语义（统一公式：time_to_event_start >= N）：
+        #   N > 0：要求距离 start_time 至少 N 秒前才挂单
+        #   N == 0：刚好到 start_time 才挂单
+        #   N < 0：允许事件已开始最多 |N| 秒仍挂单
+        min_lead = self.config.min_seconds_before_start
+        if time_to_event_start < min_lead:
+            if min_lead >= 0:
+                print(f"   [跳过] 时间不足: 距开始 {time_to_event_start:.0f}s < {min_lead}s")
+            else:
+                elapsed_after_start = -time_to_event_start
+                print(f"   [跳过] 已开始 {elapsed_after_start:.0f}s > {abs(min_lead)}s (min_seconds_before_start={min_lead})")
             task.transition_to(EventTaskState.SKIPPED, f"时间不足")
             return
 
@@ -809,10 +877,25 @@ class TaskManager:
         print(f"[执行] {task.event_name}")
         print(f"   开始: {start_time_utc.strftime('%H:%M:%S')} UTC ({time_to_event_start:.0f}s) | 结束: {end_time_utc.strftime('%H:%M:%S')} UTC")
 
-        # 从 core.config 读取配置值
-        entry_shares = DUAL_WALLET_ENTRY_SHARES
-        up_price = DUAL_WALLET_ENTRY_UP_PRICE
-        down_price = DUAL_WALLET_ENTRY_DOWN_PRICE
+        # 从 task.metadata 读取事件级配置；如果调用方未传入则回退到本管理器
+        # 的 per-window 配置（self.config.entry_*），最终回退到 core.config 全局
+        # 默认值，从而支持 5m/15m/1h 等不同窗口的事件级参数覆盖。
+        entry_shares = (
+            task.metadata.get("entry_shares")
+            or task.metadata.get("amount_usd")
+            or getattr(self.config, "entry_shares", None)
+            or DUAL_WALLET_ENTRY_SHARES
+        )
+        up_price = (
+            task.metadata.get("up_price")
+            or getattr(self.config, "entry_up_price", None)
+            or DUAL_WALLET_ENTRY_UP_PRICE
+        )
+        down_price = (
+            task.metadata.get("down_price")
+            or getattr(self.config, "entry_down_price", None)
+            or DUAL_WALLET_ENTRY_DOWN_PRICE
+        )
         condition_id = task.condition_id
 
         # 打印任务管理器启动

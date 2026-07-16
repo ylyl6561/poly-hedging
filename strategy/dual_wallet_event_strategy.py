@@ -40,6 +40,7 @@ class DualWalletEventStrategy:
         mock_mode: bool = False,
         mock_fill_side: str = "UP",
         mock_fill_after_sec: float = 5.0,
+        window: str | None = None,
     ):
         self.run_folder = run_folder
         self.dry_run = dry_run
@@ -48,6 +49,11 @@ class DualWalletEventStrategy:
         self.mock_mode = mock_mode
         self.mock_fill_side = mock_fill_side
         self.mock_fill_after_sec = mock_fill_after_sec
+
+        # Per-window tag.  ``None`` means "no window tag, behave like the
+        # legacy single-window mode".  When multiple windows are active each
+        # strategy instance is dedicated to exactly one window.
+        self.window = (window or "").strip().lower() or None
 
         if mock_mode:
             # 使用 Mock 执行器
@@ -93,10 +99,23 @@ class DualWalletEventStrategy:
         创建任务管理器。
 
         返回 TaskManager 实例，可以管理多个事件的并发执行。
+
+        When the strategy is bound to a specific window (e.g. ``15m``), the
+        ``TaskManagerConfig`` is built from the layered per-window override
+        dict so entry timeout / force-close window / poll interval / entry
+        pricing / sizing all reflect that window's tuning.  When ``window``
+        is ``None`` the strategy falls back to the global ``dual_wallet_*``
+        defaults, matching the legacy single-window behaviour.
         """
         from strategy.task_manager import TaskManager, TaskManagerConfig
+        from core.config import resolve_window_overrides
 
-        config = TaskManagerConfig.from_config_dict(self.config)
+        if self.window:
+            window_cfg = resolve_window_overrides(self.config, self.window)
+            config = TaskManagerConfig.from_config_dict(window_cfg, window=self.window)
+        else:
+            config = TaskManagerConfig.from_config_dict(self.config)
+
         return TaskManager(
             config=config,
             executor=self.executor,
@@ -104,6 +123,7 @@ class DualWalletEventStrategy:
             run_folder=self.run_folder,
             dry_run=self.dry_run,
             structured_log=self.structured_log,
+            window=self.window,
         )
 
     def run_event(
@@ -166,6 +186,7 @@ class DualWalletEventStrategy:
             close_window_sec=close_window_sec,
             wallets=self.wallets,
             side_by_wallet_id=side_by_wallet_id,
+            window=self.window,
             metadata={
                 "up_price": up_price,
                 "down_price": down_price,
@@ -232,6 +253,7 @@ class DualWalletEventStrategy:
                 close_window_sec=int(self.config.get("dual_wallet_force_close_window_sec", 60)),
                 wallets=self.wallets,
                 side_by_wallet_id=side_by_wallet_id,
+                window=self.window,
                 metadata={
                     "up_price": event_info.get("up_price", 0.5),
                     "down_price": event_info.get("down_price", 0.5),

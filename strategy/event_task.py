@@ -86,6 +86,11 @@ class EventTask:
     end_time: datetime
     start_time: datetime | None = None
     close_window_sec: int = 60
+    # Window duration label (e.g. "5m" / "15m" / "1h").  When ``None`` the
+    # task is treated as the historical "5m" default.  Downstream consumers
+    # use this to look up per-window overrides via
+    # ``core.config.resolve_window_overrides``.
+    window: str | None = None
 
     # 钱包配置
     wallets: list[WalletIdentity] = field(default_factory=list)
@@ -332,10 +337,11 @@ class EventTask:
             "up_filled_shares": self.up_filled_shares,
             "down_filled_shares": self.down_filled_shares,
             "trigger_reason": self.trigger_reason,
+            "window": self.window,
         }
 
     def __repr__(self) -> str:
         return (
-            f"EventTask(name={self.event_name!r}, state={self.state.value}, "
-            f"remaining_to_end={self.remaining_to_end():.0f}s)"
+            f"EventTask(name={self.event_name!r}, window={self.window!r}, "
+            f"state={self.state.value}, remaining_to_end={self.remaining_to_end():.0f}s)"
         )

@@ -10,6 +10,8 @@ import os
 import sys
 from pathlib import Path
 
+from core.constants import WINDOW_SECONDS
+
 
 def load_env_file(skill_file):
     """Load KEY=VALUE pairs from a local .env file without overriding real env vars."""
@@ -51,6 +53,8 @@ load_env_file(__file__)
 
 CONFIG_SCHEMA = {
     "strategy_mode": {"default": "dual_wallet_event", "env": "SIMMER_FASTLOOP_STRATEGY_MODE", "type": str, "help": "策略模式：dual_wallet_event"},
+    "windows": {"default": "5m,15m,1h", "env": "SIMMER_FASTLOOP_WINDOWS", "type": str, "help": "逗号分隔的事件窗口列表（如 5m,15m,1h），全部生效"},
+    "active_window": {"default": "5m", "env": "SIMMER_FASTLOOP_ACTIVE_WINDOW", "type": str, "help": "单窗口运行模式：5m / 15m / 1h；与 windows 互斥，优先级更高"},
     "dual_wallet_entry_timeout_sec": {"default": 120, "env": "SIMMER_FASTLOOP_DUAL_WALLET_ENTRY_TIMEOUT_SEC", "type": int, "help": "单边成交等待超时时间（秒）"},
     "dual_wallet_force_close_window_sec": {"default": 40, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FORCE_CLOSE_WINDOW_SEC", "type": int, "help": "距离事件结束多少秒时进入强平窗口"},
     "dual_wallet_fixed_sell_price": {"default": 0.6, "env": "SIMMER_FASTLOOP_DUAL_WALLET_FIXED_SELL_PRICE", "type": float, "help": "首版固定卖出/平仓价格"},
@@ -66,7 +70,7 @@ CONFIG_SCHEMA = {
     "dual_wallet_settlement_poll_timeout_sec": {"default": 180, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_POLL_TIMEOUT_SEC", "type": int, "help": "等待钱包余额稳定的最长时间（秒）"},
     "dual_wallet_settlement_stable_rounds": {"default": 3, "env": "SIMMER_FASTLOOP_DUAL_WALLET_SETTLEMENT_STABLE_ROUNDS", "type": int, "help": "认定结算完成前，余额连续不变所需轮数"},
     "dual_wallet_event_query_limit": {"default": 20, "env": "SIMMER_FASTLOOP_DUAL_WALLET_EVENT_QUERY_LIMIT", "type": int, "help": "每轮最多检查的市场数量"},
-    "dual_wallet_min_seconds_before_start": {"default": 30, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "距离事件开始至少还需保留多少秒才允许挂初始单"},
+    "dual_wallet_min_seconds_before_start": {"default": 30, "env": "SIMMER_FASTLOOP_DUAL_WALLET_MIN_SECONDS_BEFORE_START", "type": int, "help": "挂初始单的最小时机：>=0 表示距离 start_time 至少 N 秒前挂单；<0 表示允许事件已开始最多 |N| 秒仍挂单"},
     "candidate_journal": {"default": False, "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL", "type": bool, "help": "是否将候选决策写入 JSONL 日志，便于回放分析"},
     "candidate_journal_file": {"default": "candidate_journal.jsonl", "env": "SIMMER_FASTLOOP_CANDIDATE_JOURNAL_FILE", "type": str, "help": "候选决策日志文件路径"},
     "polymarket_accounts": {"default": [], "env": "SIMMER_FASTLOOP_POLYMARKET_ACCOUNTS", "type": list, "help": "结构化的 Polymarket 多账户配置"},
@@ -80,6 +84,11 @@ CONFIG_SCHEMA = {
     "global_event_journal_enabled": {"default": True, "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_ENABLED", "type": bool, "help": "是否启用全局事件日志（跨会话持久化到固定文件）"},
     "global_event_journal_file": {"default": "main/global_trade_events.json", "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_FILE", "type": str, "help": "全局事件日志文件路径"},
     "global_event_journal_flush_interval": {"default": 5, "env": "SIMMER_FASTLOOP_GLOBAL_EVENT_JOURNAL_FLUSH_INTERVAL", "type": int, "help": "全局事件日志刷新间隔（秒）"},
+    # ===== 多窗口事件类型 =====
+    # 通过 windows / active_window 配置运行时生效的事件窗口（5m / 15m / 1h）。
+    # 注意：因为 run_event 一次只处理一个事件，所以策略参数全部沿用统一的
+    # dual_wallet_* 名称。不同窗口的差异化调参通过 WINDOW_BASELINE_CONFIG
+    # （core/constants.py）按窗口自动选择，并在缺失时回退到 dual_wallet_*。
 }
 
 WALLET_LINK_RETRIES = int(os.environ.get("SIMMER_WALLET_LINK_RETRIES", "4"))
@@ -185,6 +194,7 @@ def resolve_config(skill_file):
     global DUAL_WALLET_EVENT_QUERY_LIMIT, DUAL_WALLET_MIN_SECONDS_BEFORE_START
     global CANDIDATE_JOURNAL, CANDIDATE_JOURNAL_FILE, DUAL_WALLET_DRY_RUN_STATUS_SCRIPT
     global GLOBAL_EVENT_JOURNAL_ENABLED, GLOBAL_EVENT_JOURNAL_FILE
+    global ACTIVE_WINDOWS, ACTIVE_WINDOW
 
     STRATEGY_MODE = cfg.get("strategy_mode", "dual_wallet_event").lower()
     route = cfg.get("execution_route")
@@ -213,7 +223,142 @@ def resolve_config(skill_file):
     GLOBAL_EVENT_JOURNAL_ENABLED = cfg.get("global_event_journal_enabled", True)
     GLOBAL_EVENT_JOURNAL_FILE = cfg.get("global_event_journal_file", "main/global_trade_events.json")
 
+    ACTIVE_WINDOWS = parse_windows(cfg.get("windows", "5m,15m,1h"))
+    ACTIVE_WINDOW = (cfg.get("active_window") or "").strip().lower() or None
+
     return cfg
+
+
+def parse_windows(raw) -> list[str]:
+    """Parse a windows configuration value into a canonical list.
+
+    Accepts:
+    - ``str`` like ``"5m,15m,1h"`` or ``"5m"`` (whitespace tolerant)
+    - ``list`` / ``tuple`` already containing window labels
+
+    Returns a deduplicated list preserving the original order, lowercased and
+    validated against ``WINDOW_SECONDS``.  Invalid entries are silently dropped
+    so the caller always gets a usable list.  When nothing valid remains the
+    function falls back to ``["5m"]`` so the runtime never boots with zero
+    windows.
+    """
+    candidates: list[str] = []
+    if isinstance(raw, str):
+        candidates = [piece.strip().lower() for piece in raw.split(",") if piece.strip()]
+    elif isinstance(raw, (list, tuple, set)):
+        for piece in raw:
+            if not piece:
+                continue
+            candidates.append(str(piece).strip().lower())
+    elif raw is None:
+        candidates = []
+    else:
+        candidates = [str(raw).strip().lower()]
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in candidates:
+        if value in WINDOW_SECONDS and value not in seen:
+            ordered.append(value)
+            seen.add(value)
+
+    if not ordered:
+        return ["5m"]
+    return ordered
+
+
+def _coerce_override(value, fallback):
+    """Coerce an override that may be ``None`` (unset) or already-typed.
+
+    A ``None`` override always falls through to the fallback.  Otherwise the
+    value is returned as-is and the caller is responsible for type compatibility
+    with the field they are populating.
+    """
+    if value is None:
+        return fallback
+    return value
+
+
+def resolve_window_overrides(cfg: dict | None, window: str) -> dict:
+    """Compute the effective config for a given event window.
+
+    Strategy: ``run_event`` 一次只处理一个事件（一种窗口），所以策略参数沿用
+    统一的 ``dual_wallet_*`` 命名。不同窗口的差异化调参通过
+    :data:`core.constants.WINDOW_BASELINE_CONFIG` 自动应用 ——
+    ``resolve_window_overrides`` 会读取 `dual_wallet_*` 配置，用对应窗口的
+    baseline 填补未显式设置的字段（5m 用 5m baseline，15m 用 15m baseline 等）。
+
+    Resolution order for each field:
+    1. ``cfg["dual_wallet_<field>"]`` when set (explicit user override)
+    2. ``WINDOW_BASELINE_CONFIG[window][field]`` (window-specific baseline)
+    3. ``CONFIG_SCHEMA["dual_wallet_<field>"]["default"]`` (global default)
+
+    Returns a flat dict keyed by the canonical field names (no ``dual_wallet_``
+    prefix).  Downstream code (``TaskManagerConfig.from_config_dict``,
+    ``run_event`` etc.) only ever needs to look up these canonical names.
+    """
+    # Local import: ``core.constants`` does not import ``core.config``, so this
+    # is safe even at module-load time.
+    from core.constants import WINDOW_BASELINE_CONFIG
+
+    cfg = cfg or {}
+    window_key = (window or "").strip().lower()
+    baseline = WINDOW_BASELINE_CONFIG.get(window_key, {})
+
+    def pick(field: str):
+        """Layered lookup for a single dual_wallet_* field.
+
+        ``field`` here is the canonical field name (no ``dual_wallet_`` prefix).
+        """
+        cfg_key = f"dual_wallet_{field}"
+
+        # 1. Explicit user override.
+        user_value = cfg.get(cfg_key)
+        if user_value is not None:
+            return user_value
+
+        # 2. Window-specific baseline.
+        baseline_value = baseline.get(field)
+        if baseline_value is not None:
+            return baseline_value
+
+        # 3. Global CONFIG_SCHEMA default.
+        schema_meta = CONFIG_SCHEMA.get(cfg_key)
+        if schema_meta and "default" in schema_meta:
+            default = schema_meta["default"]
+            if default is not None:
+                return default
+        return None
+
+    resolved: dict = {}
+
+    # --- All fields use the unified dual_wallet_* naming ---
+    resolved["entry_timeout_sec"] = int(pick("entry_timeout_sec"))
+    resolved["force_close_window_sec"] = int(pick("force_close_window_sec"))
+    resolved["fixed_sell_price"] = float(pick("fixed_sell_price"))
+    resolved["fak_close_price"] = float(pick("fak_close_price"))
+    resolved["entry_up_price"] = float(pick("entry_up_price"))
+    resolved["entry_down_price"] = float(pick("entry_down_price"))
+    resolved["entry_shares"] = float(pick("entry_shares"))
+    resolved["max_consecutive_losses"] = int(pick("max_consecutive_losses"))
+    resolved["poll_interval_sec"] = float(pick("poll_interval_sec"))
+    resolved["min_seconds_before_start"] = int(pick("min_seconds_before_start"))
+
+    # --- Outcome / settlement knobs (also unified) ---
+    resolved["outcome_poll_timeout_sec"] = int(pick("outcome_poll_timeout_sec"))
+    resolved["outcome_poll_interval_sec"] = int(pick("outcome_poll_interval_sec"))
+    resolved["settlement_poll_timeout_sec"] = int(pick("settlement_poll_timeout_sec"))
+    resolved["settlement_poll_interval_sec"] = int(pick("settlement_poll_interval_sec"))
+    resolved["settlement_stable_rounds"] = int(pick("settlement_stable_rounds"))
+
+    # Event query limit is global; just pass it through for convenience.
+    resolved["dual_wallet_event_query_limit"] = int(
+        cfg.get("dual_wallet_event_query_limit", 20)
+    )
+
+    # Bookkeeping for debugging / logging.
+    resolved["window"] = window_key or None
+    return resolved
 
 
 resolve_config(__file__)

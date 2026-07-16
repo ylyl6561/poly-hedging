@@ -17,6 +17,8 @@ if str(_project_root) not in sys.path:
 sys.stdout.reconfigure(line_buffering=True)
 
 from core import load_env_file, resolve_config, update_config, CONFIG_SCHEMA
+from core.config import ACTIVE_WINDOWS, ACTIVE_WINDOW, resolve_window_overrides
+from core.constants import WINDOW_SECONDS
 from api import install_sdk_logger_noise_filter
 from state import StructuredRunLog
 from state.trade_state import init_trade_state, get_trade_state_manager, get_async_outcome_poller, TradePhase
@@ -85,12 +87,19 @@ def setup_run_logging(is_live: bool):
     return run_folder, structured_log
 
 
-def _pick_events(limit: int):
-    markets = discover_fast_market_markets(asset="BTC", window="5m", use_simmer=True)
+def _pick_events(limit: int, window: str):
+    """Discover upcoming markets for a single event window.
+
+    Polymarket publishes deterministic slugs for the current 5m/15m/1h slot;
+    we filter by window so the caller only sees markets matching the window
+    this strategy is dedicated to.  Upcoming markets are returned sorted by
+    start time so the closest upcoming event is processed first.
+    """
+    markets = discover_fast_market_markets(asset="BTC", window=window, use_simmer=True)
     now = datetime.now(timezone.utc)
     upcoming_markets = []
     for market in markets:
-        start_time, end_time = _build_event_times(market)
+        start_time, end_time = _build_event_times(market, window=window)
         if not start_time or not end_time:
             continue
         if start_time <= now:
@@ -100,7 +109,7 @@ def _pick_events(limit: int):
     return [market for _, market in upcoming_markets[:limit]]
 
 
-def _build_event_times(market: dict):
+def _build_event_times(market: dict, window: str = "5m"):
     """
     构建事件的 start_time 和 end_time。
 
@@ -110,10 +119,16 @@ def _build_event_times(market: dict):
 
     当返回的是 datetime 对象时，它应该是 UTC 或带有时区信息的。
     我们不能简单地用 fromtimestamp 转换。
+
+    ``window`` controls the duration subtracted from ``end_time`` to derive
+    ``start_time``.  Defaults to ``5m`` for backward compatibility, but should
+    always be passed when handling 15m / 1h events.
     """
     end_time = market.get("end_time")
     if end_time is None:
         return None, None
+
+    window_seconds = WINDOW_SECONDS.get(window, WINDOW_SECONDS.get("5m", 300))
 
     # 如果已经是 datetime 对象（可能是 naive 或 aware）
     if isinstance(end_time, datetime):
@@ -123,7 +138,7 @@ def _build_event_times(market: dict):
         else:
             # 转换为 UTC
             end_time_utc = end_time.astimezone(timezone.utc)
-        start_time_utc = end_time_utc - timedelta(minutes=5)
+        start_time_utc = end_time_utc - timedelta(seconds=window_seconds)
         return start_time_utc, end_time_utc
 
     # 如果是 Unix 时间戳（秒或毫秒）
@@ -133,7 +148,7 @@ def _build_event_times(market: dict):
         if ts > 1e12:
             ts = ts / 1000
         end_time_utc = datetime.fromtimestamp(ts, tz=timezone.utc)
-        start_time_utc = end_time_utc - timedelta(minutes=5)
+        start_time_utc = end_time_utc - timedelta(seconds=window_seconds)
         return start_time_utc, end_time_utc
     except (TypeError, ValueError):
         return None, None
@@ -149,6 +164,12 @@ def main():
     parser.add_argument("--mock", action="store_true", help="Mock mode: simulate orders without real execution")
     parser.add_argument("--mock-fill-side", default="UP", choices=["UP", "DOWN"], help="Mock: which side fills first")
     parser.add_argument("--mock-fill-after", type=float, default=5.0, help="Mock: seconds until fill")
+    parser.add_argument(
+        "--window",
+        choices=["5m", "15m", "1h"],
+        help="Override the active window for this run (single-window mode). "
+             "Mutually exclusive with SIMMER_FASTLOOP_WINDOWS env var.",
+    )
     args = parser.parse_args()
 
     if args.set:
@@ -175,6 +196,24 @@ def main():
     run_folder, structured_log = setup_run_logging(is_live=args.live)
     cfg = resolve_config(__file__)
 
+    # Decide which event windows to process.  Priority:
+    # 1. --window CLI override (single-window mode for ad-hoc testing)
+    # 2. SIMMER_FASTLOOP_WINDOWS env / config.json (multi-window default)
+    # In every case the result is a non-empty list of window labels.
+    if args.window:
+        active_windows = [args.window]
+    else:
+        active_windows = list(ACTIVE_WINDOWS) if ACTIVE_WINDOWS else ["5m"]
+    if ACTIVE_WINDOW and ACTIVE_WINDOW not in active_windows:
+        print(
+            f"⚠️  SIMMER_FASTLOOP_ACTIVE_WINDOW={ACTIVE_WINDOW} is set, "
+            f"but multi-window mode is active ({active_windows}). "
+            "Single-window env settings are ignored. "
+            "Use --window to force single-window mode."
+        )
+
+    print(f"🪟 活跃窗口: {active_windows}")
+
     # 初始化交易状态管理器
     state_manager = init_trade_state()
 
@@ -183,19 +222,39 @@ def main():
     if not args.no_async:
         async_poller.start()
 
-    # 创建策略（支持 mock 模式）
-    strategy = DualWalletEventStrategy(
-        run_folder=run_folder,
-        dry_run=dry_run,
-        config=cfg,
-        structured_log=structured_log,
-        mock_mode=args.mock,
-        mock_fill_side=args.mock_fill_side,
-        mock_fill_after_sec=args.mock_fill_after,
-    )
+    # 创建策略（支持 mock 模式，每个窗口独立实例）
+    strategies: dict[str, DualWalletEventStrategy] = {}
+    for window in active_windows:
+        strategies[window] = DualWalletEventStrategy(
+            run_folder=run_folder,
+            dry_run=dry_run,
+            config=cfg,
+            structured_log=structured_log,
+            mock_mode=args.mock,
+            mock_fill_side=args.mock_fill_side,
+            mock_fill_after_sec=args.mock_fill_after,
+            window=window,
+        )
 
-    def run_once():
-        markets = _pick_events(int(cfg.get("dual_wallet_event_query_limit", 20)))
+    def run_once_for_window(window: str) -> None:
+        """Run one polling cycle for a single event window.
+
+        每次只处理一个窗口的 markets 和 task。状态管理器是全局共享的，
+        所以 5m 和 15m 不会重复挂同一个事件，但每个窗口的 strategy /
+        TaskManager 实例独立跟踪损失窗口与停机决策。
+
+        ``window_cfg`` 已经把 ``dual_wallet_*`` 的全局配置 + 该窗口的
+        ``WINDOW_BASELINE_CONFIG`` 合并好了，所以这里统一使用规范化的
+        字段名（不带 ``dual_wallet_`` 前缀）即可。
+        """
+        strategy = strategies[window]
+        # Resolve per-window config once per cycle to avoid per-iteration lookups.
+        window_cfg = resolve_window_overrides(cfg, window)
+        effective_query_limit = int(
+            window_cfg.get("dual_wallet_event_query_limit", cfg.get("dual_wallet_event_query_limit", 20))
+        )
+
+        markets = _pick_events(effective_query_limit, window=window)
         structured_log.record_markets(markets)
 
         new_count = 0
@@ -204,9 +263,9 @@ def main():
         for market in markets:
             if strategy.should_halt():
                 halt_reason = strategy.halt_reason() or "max_consecutive_losses"
-                print(f"\n⚠️ 停机: {halt_reason}")
+                print(f"\n⚠️ [{window}] 停机: {halt_reason}")
                 structured_log.set_halted(True)
-                structured_log.record_event(event_name=market.get("question") or market.get("slug") or "Unknown Event", event_id=market.get("condition_id") or "", phase="halted", payload={"reason": halt_reason})
+                structured_log.record_event(event_name=market.get("question") or market.get("slug") or "Unknown Event", event_id=market.get("condition_id") or "", phase="halted", payload={"reason": halt_reason, "window": window})
                 structured_log.flush()
                 break
 
@@ -216,33 +275,37 @@ def main():
             # 检查是否已经在处理中
             existing_trade = state_manager.get_trade(condition_id)
             if existing_trade and existing_trade.phase not in (TradePhase.COMPLETED.value, TradePhase.FAILED.value):
-                # 跳过已在处理的交易
                 if not args.quiet:
-                    print(f"[跳过] {event_name}: 已在处理中 (phase={existing_trade.phase})")
+                    print(f"[跳过] [{window}] {event_name}: 已在处理中 (phase={existing_trade.phase})")
                 skip_count += 1
                 continue
 
             clob_token_ids = market.get("clob_token_ids") or []
-            start_time, end_time = _build_event_times(market)
+            start_time, end_time = _build_event_times(market, window=window)
             if not start_time or not end_time:
                 continue
 
-            # 事件已开始或时间不足，跳过
             now = datetime.now(timezone.utc)
-            if now >= start_time:
-                skip_count += 1
-                print(f"[跳过] {event_name}: 已开始")
-                continue
+            # min_seconds_before_start 语义（统一公式：time_to_start >= N）：
+            #   N > 0：要求距离 start_time 至少 N 秒前才挂单
+            #   N == 0：刚好到 start_time 才挂单
+            #   N < 0：允许事件已开始最多 |N| 秒仍挂单（即 time_to_start >= N，
+            #          time_to_start 为负时只要大于 N 即仍在 |N| 秒窗口内）
             time_to_start = (start_time - now).total_seconds()
-            min_before_start = cfg.get("dual_wallet_min_seconds_before_start", 20)
+            min_before_start = int(window_cfg["min_seconds_before_start"])
             if time_to_start < min_before_start:
                 skip_count += 1
-                print(f"[跳过] {event_name}: 距开始 {time_to_start:.0f}s < {min_before_start}s")
+                if min_before_start >= 0:
+                    print(f"[跳过] [{window}] {event_name}: 距开始 {time_to_start:.0f}s < {min_before_start}s")
+                else:
+                    # 负数语义：事件已开始超过 |N| 秒
+                    elapsed_after_start = -time_to_start
+                    print(f"[跳过] [{window}] {event_name}: 已开始 {elapsed_after_start:.0f}s > {abs(min_before_start)}s (min_seconds_before_start={min_before_start})")
                 continue
 
             new_count += 1
-            print(f"【事件】{event_name}")
-            structured_log.record_event(event_name=event_name, event_id=condition_id, phase="start", payload={"market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")}, "start_time": start_time.isoformat(), "end_time": end_time.isoformat()})
+            print(f"【事件】[{window}] {event_name}")
+            structured_log.record_event(event_name=event_name, event_id=condition_id, phase="start", payload={"market": {"slug": market.get("slug"), "condition_id": condition_id, "source": market.get("source")}, "start_time": start_time.isoformat(), "end_time": end_time.isoformat(), "window": window})
             summary = strategy.run_event(
                 event_name=event_name,
                 event_id=condition_id,
@@ -251,24 +314,29 @@ def main():
                 clob_token_ids=clob_token_ids,
                 fee_rate_bps=int(market.get("fee_rate_bps") or 0),
                 condition_id=condition_id,
-                entry_shares=float(cfg.get("dual_wallet_entry_shares", 10.0)),
-                up_price=float(cfg.get("dual_wallet_entry_up_price", 0.5)),
-                down_price=float(cfg.get("dual_wallet_entry_down_price", 0.5)),
+                # 下面这些参数全部沿用统一的 dual_wallet_* 命名 —— 5m/15m/1h
+                # 之间的差异已经由 resolve_window_overrides 自动应用。
+                entry_shares=float(window_cfg["entry_shares"]),
+                up_price=float(window_cfg["entry_up_price"]),
+                down_price=float(window_cfg["entry_down_price"]),
             )
             structured_log.record_result(summary)
-            structured_log.record_event_state(event_name=event_name, event_id=condition_id, flow_state="finished", wallet_status={wallet_id: f"{pnl:.4f}" for wallet_id, pnl in summary.wallet_pnl_usd.items()}, note=f"profit={summary.is_profit}")
+            structured_log.record_event_state(event_name=event_name, event_id=condition_id, flow_state="finished", wallet_status={wallet_id: f"{pnl:.4f}" for wallet_id, pnl in summary.wallet_pnl_usd.items()}, note=f"profit={summary.is_profit};window={window}")
             structured_log.flush()
 
             if strategy.should_halt():
                 structured_log.set_halted(True)
-                print(f"\n⚠️ 停机: {strategy.halt_reason() or 'unknown_reason'}")
+                print(f"\n⚠️ [{window}] 停机: {strategy.halt_reason() or 'unknown_reason'}")
                 break
 
-        # 只在实际处理了事件时打印轮询统计
         if new_count > 0 or skip_count > 0:
-            print(f"轮询完成: 新事件={new_count}, 跳过={skip_count}")
+            print(f"[{window}] 轮询完成: 新事件={new_count}, 跳过={skip_count}")
 
-        # 显示交易状态摘要
+    def run_once():
+        """Run one polling cycle across all active windows."""
+        for window in active_windows:
+            run_once_for_window(window)
+
         summary = state_manager.get_summary()
         if summary["active_count"] > 0:
             print(f"📊 活跃交易: {summary['active_count']} | 总交易: {summary['total_trades']}")
@@ -277,13 +345,20 @@ def main():
         run_once()
     else:
         try:
+            # 用最严的那个窗口的 poll_interval 作为外层节流，保证所有窗口都被
+            # 频繁扫描。 5m 窗口 baseline 是 0.1s，所以外层 sleep 至少 0.1s。
+            base_poll = float(cfg.get("dual_wallet_poll_interval_sec", 5))
+            per_window_polls = [
+                resolve_window_overrides(cfg, w).get("poll_interval_sec", base_poll)
+                for w in active_windows
+            ]
+            outer_sleep = max(0.05, min(per_window_polls + [base_poll]))
             while True:
                 run_once()
-                time.sleep(int(cfg.get("dual_wallet_poll_interval_sec", 5)))
+                time.sleep(outer_sleep)
         except KeyboardInterrupt:
             print("\nStopped.")
         finally:
-            # 停止异步轮询器
             if not args.no_async:
                 async_poller.stop()
 

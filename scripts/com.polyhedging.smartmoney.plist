@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.polyhedging.smartmoney</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/yuliang/poly/poly-hedging/.venv/bin/python</string>
+        <string>-u</string>
+        <string>-m</string>
+        <string>smart_money</string>
+        <string>run</string>
+        <string>--job</string>
+        <string>all</string>
+        <string>--loop</string>
+        <string>--loop-leaderboard-seconds</string>
+        <string>86400</string>
+        <string>--loop-markets-seconds</string>
+        <string>21600</string>
+        <string>--loop-markets-initial-delay</string>
+        <string>120</string>
+        <string>--loop-trades-seconds</string>
+        <string>300</string>
+        <string>--loop-positions-seconds</string>
+        <string>300</string>
+        <string>--loop-tick-seconds</string>
+        <string>10</string>
+        <string>--loop-follow-seconds</string>
+        <string>30</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/yuliang/poly/poly-hedging</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/yuliang/poly/poly-hedging/logs/smart_money_loop.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/yuliang/poly/poly-hedging/logs/smart_money_loop.err</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/yuliang/poly/poly-hedging/.venv/bin:/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.polyhedging.smartmoney.dashboard</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/yuliang/poly/poly-hedging/.venv/bin/python</string>
+    <string>-u</string>
+    <string>-m</string>
+    <string>smart_money</string>
+    <string>serve</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--port</string>
+    <string>8088</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/yuliang/poly/poly-hedging</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/yuliang/poly/poly-hedging/.venv/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/yuliang/poly/poly-hedging/logs/smart_money_dashboard.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/yuliang/poly/poly-hedging/logs/smart_money_dashboard.err</string>
+</dict>
+</plist>

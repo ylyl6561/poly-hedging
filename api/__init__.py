@@ -43,6 +43,27 @@ from .api import (
     GAMMA_API,
     CLOB_API,
 )
+from .order_events import (
+    OrderEvent,
+    OrderEventBus,
+    OrderStatus,
+    ATTENTION_STATUSES,
+    get_order_event_bus,
+    reset_default_order_event_bus,
+    new_order_id,
+)
+try:
+    # Phase 2: public read client (browser-shaped headers, token bucket,
+    # circuit breaker, per-route budget).  Re-exported under the legacy
+    # name for backwards compatibility with smart_money.client.
+    from .polymarket_public import (  # noqa: F401
+        PolymarketPublicClient,
+        BROWSER_HEADERS,
+        TTLCache,
+        PublicClientSettings,
+    )
+except ImportError:  # pragma: no cover - optional / legacy module
+    PolymarketPublicClient = None  # type: ignore[assignment]
 
 __all__ = [
     "api_request",
@@ -69,4 +90,15 @@ __all__ = [
     "_is_retryable_wallet_link_error",
     "GAMMA_API",
     "CLOB_API",
+    "OrderEvent",
+    "OrderEventBus",
+    "OrderStatus",
+    "ATTENTION_STATUSES",
+    "get_order_event_bus",
+    "reset_default_order_event_bus",
+    "new_order_id",
+    "PolymarketPublicClient",
+    "BROWSER_HEADERS",
+    "TTLCache",
+    "PublicClientSettings",
 ]

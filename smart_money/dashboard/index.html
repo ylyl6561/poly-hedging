@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polymarket Smart Money Tracker · Phase 4</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f17;
+      --panel: #141a26;
+      --panel-2: #1c2334;
+      --border: #233049;
+      --text: #e8ecf4;
+      --muted: #8a93a8;
+      --accent: #4f8cff;
+      --green: #3ec48c;
+      --red: #ff5f6d;
+      --yellow: #f5b740;
+      --warn: #f5b740;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, #0f1622 0%, #0b0f17 100%);
+      position: sticky; top: 0; z-index: 5;
+    }
+    header h1 { font-size: 18px; margin: 0; }
+    header .meta { color: var(--muted); font-size: 12px; }
+    .refresh { font-size: 12px; padding: 6px 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; }
+
+    /* Phase 4: tabs */
+    nav.tabs {
+      display: flex;
+      gap: 4px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 64px;
+      z-index: 4;
+    }
+    nav.tabs button {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 12px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    nav.tabs button:hover { color: var(--text); }
+    nav.tabs button.active {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+    nav.tabs .pill { font-size: 10px; padding: 1px 6px; background: rgba(79,140,255,0.2); color: var(--accent); border-radius: 8px; margin-left: 6px; }
+
+    main { padding: 20px 28px 60px; display: grid; gap: 18px; grid-template-columns: repeat(12, 1fr); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: grid; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    }
+    .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+    .card.wide { grid-column: span 12; }
+    .card.half { grid-column: span 6; }
+    .card.third { grid-column: span 4; }
+    @media (max-width: 1100px) { .card.half, .card.third { grid-column: span 12; } }
+    .stat-row { display: flex; gap: 18px; flex-wrap: wrap; }
+    .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; min-width: 140px; }
+    .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .stat .value { font-size: 20px; font-weight: 600; margin-top: 4px; }
+    .green { color: var(--green); }
+    .red { color: var(--red); }
+    .yellow { color: var(--yellow); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    td .wallet { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; color: var(--muted); }
+    tr:hover td { background: rgba(79,140,255,0.05); }
+
+    a.wallet-link { color: #cfdcff; text-decoration: none; border-bottom: 1px dotted rgba(79,140,255,0.5); }
+    a.wallet-link:hover { color: #fff; border-bottom-color: var(--accent); }
+
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; }
+    .badge.yes { background: rgba(62,196,140,0.15); color: var(--green); }
+    .badge.no { background: rgba(255,95,109,0.15); color: var(--red); }
+    .badge.neutral { background: rgba(245,183,64,0.15); color: var(--yellow); }
+    canvas { max-height: 280px; }
+    .empty { color: var(--muted); text-align: center; padding: 18px; font-size: 13px; }
+    .footer { color: var(--muted); font-size: 11px; text-align: center; padding: 12px 0 28px; }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(79,140,255,0.15); color: var(--accent); margin-left: 6px; }
+
+    .act-btn { display:inline-block; font-size:11px; padding:4px 10px; border-radius:6px;
+               border:1px solid rgba(79,140,255,0.4); background:rgba(79,140,255,0.12);
+               color:#cfdcff; text-decoration:none; margin-right:4px; cursor:pointer;
+               transition:all 0.15s ease; }
+    .act-btn:hover { background:rgba(79,140,255,0.28); border-color:rgba(79,140,255,0.7); color:#fff; }
+    .act-btn.copied { background:rgba(86,201,124,0.25); border-color:rgba(86,201,124,0.6); color:#b9f5cc; }
+    .act-btn.ghost { background:transparent; border-color:rgba(138,147,168,0.4); color:var(--muted); }
+    .act-btn.sell { background:rgba(226,100,100,0.18); border-color:rgba(226,100,100,0.5); color:#e26464; }
+    .act-btn.sell:hover { background:rgba(226,100,100,0.34); color:#fff; }
+    /* "跟单" — prefill a BUY order from a follow-list wallet's position. */
+    .act-btn.copy { background:rgba(86,201,124,0.18); border-color:rgba(86,201,124,0.5); color:#56c97c; }
+    .act-btn.copy:hover { background:rgba(86,201,124,0.34); color:#fff; }
+    .ord-sel { background:rgba(255,255,255,0.04); color:var(--text);
+               border:1px solid rgba(255,255,255,0.10); border-radius:6px;
+               padding:3px 8px; font-size:12px; }
+    .act-btn.ghost:hover { background:rgba(138,147,168,0.18); color:#cfdcff; }
+
+    /* My-positions SELL button */
+    .evt-action { font-size:11px; padding:3px 8px; border-radius:6px; background:rgba(79,140,255,0.18); color:#cfdcff; border:1px solid rgba(79,140,255,0.4); cursor:pointer; }
+    .evt-action:hover { background:rgba(79,140,255,0.32); }
+    .evt-action:disabled { opacity:0.4; cursor:not-allowed; }
+    .evt-sell { background:rgba(226,160,76,0.18); color:#e8a44c; border-color:rgba(226,160,76,0.45); }
+    .evt-sell:hover { background:rgba(226,160,76,0.34); }
+
+    /* Leader-sales panel */
+    .sales-row { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); display:grid; grid-template-columns: 1fr 1fr 90px 100px; gap:10px; font-size: 12px; align-items: center; }
+    .sales-row:last-child { border-bottom: 0; }
+    .sales-row.alert { background: rgba(255,95,109,0.06); }
+    .sales-warn { background: rgba(245,183,64,0.12); color: var(--warn); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Polymarket Smart Money Tracker <span class="pill">Phase 4 · 跟单控制台</span></h1>
+      <div class="meta" id="meta">加载中…</div>
+    </div>
+    <div>
+      <button class="refresh" id="refreshBtn">刷新</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="trading" class="active">🎯 跟单 Trading <span class="pill">NEW</span></button>
+  </nav>
+
+  <!-- ============================================================== -->
+  <!-- TAB 1 · Trading (Phase 4 — my positions + SELL only) -->
+  <!-- ============================================================== -->
+  <div id="tab-trading" class="tab-pane active">
+    <main>
+      <section class="card wide">
+        <h2>
+          我的持仓 · 仅可抛售
+          <span class="pill">operator wallet</span>
+          <span class="hint" id="myPosHint" style="margin-left:8px;font-size:11px;color:var(--muted);"></span>
+        </h2>
+        <div style="font-size:11px;color:#5b657f;margin-bottom:6px">
+          只展示我自己个人账号（signal_id=0）当前持仓中的事件；
+          点「抛售」按钮 → 二次确认 → 真实下 CLOB SELL 单。
+        </div>
+        <div style="overflow:auto;max-height:340px;">
+          <table>
+            <thead><tr>
+              <th>事件</th>
+              <th>方向</th>
+              <th>入场价</th>
+              <th>现价</th>
+              <th>涨跌</th>
+              <th>份额</th>
+              <th>持仓金额</th>
+              <th>盈亏</th>
+              <th>操作</th>
+            </tr></thead>
+            <tbody id="myPosBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>
+          跟单名单 · 已平仓监控（follow-list 钱包卖出 · 我仍持仓中 → 提醒抛售）
+          <span class="pill">last 30 min</span>
+          <span class="hint" id="salesHint" style="margin-left:8px;font-size:11px;color:var(--muted);"></span>
+        </h2>
+        <div style="font-size:11px;color:#5b657f;margin-bottom:6px">
+          当 follow-list 中的某个钱包在我们仍有持仓的事件上发生 SELL 时触发告警；
+          实际操作通过上面的「我的持仓」面板完成。
+        </div>
+        <div style="overflow:auto;max-height:280px;" id="salesList">
+          <div class="empty">等待扫描…</div>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>执行日志 · 跟单 orders（仅 follow-list 钱包当前生效中的持仓，主键：钱包 + 事件）</h2>
+        <div style="display:flex;gap:8px;align-items:center;margin:6px 0 8px;font-size:12px;color:var(--muted);flex-wrap:wrap">
+          排序:
+          <select id="ordersSort" class="ord-sel">
+            <option value="probability:desc">现价概率 ↓</option>
+            <option value="probability:asc">现价概率 ↑</option>
+            <option value="pnl:desc">涨跌 ↓</option>
+            <option value="pnl:asc">涨跌 ↑</option>
+            <option value="value:desc">持仓金额 ↓</option>
+            <option value="value:asc">持仓金额 ↑</option>
+            <option value="size:desc">份额 ↓</option>
+            <option value="size:asc">份额 ↑</option>
+            <option value="age:desc">持仓已存在：最新优先 ↓</option>
+            <option value="age:asc">持仓已存在：最早优先 ↑</option>
+          </select>
+          <span style="color:#5b657f;margin-left:6px">
+            ⚠ 不再展示 error / skip / dry-run；只有 (钱包 ∈ 跟单名单) ∩ (持仓 size&gt;0) 才入表；超过 3 天的自动屏蔽
+          </span>
+          <span id="ordersPager" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px">
+            <button class="act-btn ghost" id="ordersPrev" type="button">‹ 上一页</button>
+            <span id="ordersPageInfo" style="color:var(--muted);font-variant-numeric:tabular-nums">第 1 / 1 页 · 共 0 条</span>
+            <button class="act-btn ghost" id="ordersNext" type="button">下一页 ›</button>
+          </span>
+        </div>
+        <div style="overflow:auto;max-height:340px;">
+          <table>
+            <thead><tr>
+              <th>钱包</th>
+              <th>事件名称</th>
+              <th>方向</th>
+              <th>入场价</th>
+              <th>现价概率</th>
+              <th>涨跌</th>
+              <th>持仓份额</th>
+              <th>持仓金额</th>
+              <th>持仓已存在</th>
+              <th>创建时间</th>
+              <th>操作</th>
+            </tr></thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>跟单名单 · 跟单候选（点击超链直达钱包主页或排行榜）</h2>
+        <div style="overflow:auto;max-height:300px;">
+          <table>
+            <thead><tr>
+              <th>#</th><th>来源</th><th>钱包</th><th>用户名</th><th>得分</th>
+              <th>胜率</th><th>ROI</th><th>已平仓</th><th>已实现</th>
+              <th>主战场</th><th>最近交易</th><th>持仓</th><th>操作</th>
+            </tr></thead>
+            <tbody id="followBody2"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>手动跟单 · 手动新增 / 删除账号（绕过 PnL / 亏损日 / 回撤门槛）</h2>
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+          <input id="manualWallet" placeholder="0x + 40 个十六进制字符（共 42 字符）" maxlength="42" pattern="0x[0-9a-fA-F]{40}" style="flex:1;min-width:300px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--fg)">
+          <input id="manualUsername" placeholder="用户名（可选）" style="width:160px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--fg)">
+          <input id="manualNote" placeholder="备注（可选）" style="width:200px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-2);color:var(--fg)">
+          <button onclick="manualAdd()" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer">＋ 手动加入</button>
+        </div>
+        <div id="manualMsg" style="font-size:11px;color:var(--muted);margin-bottom:6px"></div>
+        <div style="overflow:auto;max-height:240px;">
+          <table>
+            <thead><tr>
+              <th>#</th><th>钱包</th><th>用户名</th>
+              <th>30d ROI</th><th>30d 已实现</th><th>亏损日</th><th>最大回撤</th>
+              <th>最近交易</th><th>持仓</th><th>备注</th><th>操作</th>
+            </tr></thead>
+            <tbody id="manualBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card wide">
+        <h2>
+          被拒候选 · 30 天窗口里没进跟单名单的 trader（含拒绝原因）
+          <span class="pill" id="candidatesMeta" style="margin-left:8px;font-size:11px">—</span>
+        </h2>
+        <div style="overflow:auto;max-height:420px;">
+          <table>
+            <thead><tr>
+              <th>#</th><th>钱包</th><th>窗口得分</th>
+              <th>30d 盈利</th><th>30d ROI</th>
+              <th>活跃天数</th><th>亏损日 / 周期</th><th>最大回撤</th>
+              <th>持仓</th><th>距上次交易</th><th>未通过的门槛</th>
+            </tr></thead>
+            <tbody id="rejectedBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+    // ===========================================================
+    // Shared helpers
+    // ===========================================================
+    const REFRESH_MS = 60000;
+    const POLYMARKET_HOST = "https://polymarket.com";
+    const ordersApiBase = "/api";
+    const TAB_BASE = "/";  // In-page anchors used by the signal-id hyperlinks.
+    let charts = {};
+    // Resolve the most user-friendly slug for the trader profile link.
+// Polymarket's canonical handle route is **/<lang>/@<username-or-address>
+// (e.g. https://polymarket.com/zh/@swisstony).  The legacy
+// /profile/<slug> route no longer resolves for username slugs
+// (it 404s, see /zh/profile/swisstony), and although it still 200s for
+// raw addresses it shows them as "Anon".  The /@/ route on the other
+// hand recognises both and resolves to the real profile.
+    function profileSlug(addr, username) {
+      const u = (username || "").trim();
+      if (u && !u.startsWith("0x")) return u;
+      return addr;
+    }
+    const walletUrl = (addr, username) => {
+      const slug = profileSlug(addr, username);
+      // No /zh segment here — Polymarket redirects to the user's locale
+      // automatically, and dropping the prefix keeps the URL minimal.
+      return `${POLYMARKET_HOST}/@${encodeURIComponent(slug)}`;
+    };
+    const leaderboardUrl = (addr, username) => {
+      const slug = profileSlug(addr, username);
+      // Leaderboard search-by-name works for usernames; for raw addresses we
+      // still go through the same route (Polymarket's search box accepts
+      // either).
+      return `${POLYMARKET_HOST}/leaderboard?search=${encodeURIComponent(slug)}`;
+    };
+
+    function fmtUSD(v) {
+      if (v == null) return "—";
+      const n = Number(v);
+      const sign = n >= 0 ? "$" : "-$";
+      return sign + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    }
+    function fmtPct(v) {
+      if (v == null) return "—";
+      const n = Number(v);
+      const cls = n >= 0 ? "green" : "red";
+      return `<span class="${cls}">${n >= 0 ? "+" : ""}${n.toFixed(2)}%</span>`;
+    }
+    function fmtSigned(v) {
+      if (v == null) return "—";
+      const n = Number(v);
+      const cls = n >= 0 ? "green" : "red";
+      return `<span class="${cls}">${fmtUSD(n)}</span>`;
+    }
+    async function fetchJSON(url, opt) {
+      const r = await fetch(url, opt);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    }
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function shortWallet(w) {
+      if (!w) return "—";
+      const s = String(w);
+      return s.length <= 12 ? s : s.slice(0, 6) + "…" + s.slice(-4);
+    }
+    function walletLinks(addr, username) {
+      if (!addr && !username) return "—";
+      // Display priority: username (e.g. "swisstony") > short wallet.
+      // The link goes to /profile/<username-or-addr>, matching whatever is
+      // shown so users get a 1:1 visual mapping on the Polymarket side.
+      const slug = profileSlug(addr, username);
+      const label = (username && !String(username).startsWith("0x"))
+        ? escapeHtml(username)
+        : escapeHtml(shortWallet(addr));
+      const fullAddr = escapeHtml(addr || "");
+      return `<a class="wallet-link" href="${escapeHtml(walletUrl(addr, username))}" target="_blank" rel="noopener noreferrer" title="Profile · ${fullAddr}">${label}</a> · <a class="wallet-link" href="${escapeHtml(leaderboardUrl(addr, username))}" target="_blank" rel="noopener noreferrer" title="Leaderboard · ${fullAddr}">LB</a>`;
+    }
+    function marketLink(slug, cond) {
+      // ``slug`` is preferred as an *event* slug (Polymarket's /event/<slug>
+      // page); if it points to a market instead, the URL 404s.  Callers
+      // that have a separate event_slug should pass it via the helper
+      // below.
+      const url = slug
+        ? `${POLYMARKET_HOST}/event/${slug}`
+        : `${POLYMARKET_HOST}/market/${cond || ""}`;
+      return `<a class="wallet-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(slug ? shortWallet(slug) : (cond || "").slice(0,12))}</a>`;
+    }
+    // Single source of truth for "build a clickable Polymarket URL for
+    // this condition_id".  Every hyperlink in the dashboard routes
+    // through here so the fallback behaviour is consistent and never
+    // produces a 404:
+    //   1. event_slug + slug → /event/<event>/<market>  (the *specific*
+    //      market page — what the user clicks when they want the exact
+    //      order's market, not the umbrella event landing page)
+    //   2. event_slug        → /event/<event>           (the event page)
+    //   3. slug              → /market/<slug>           (the market page)
+    //   4. fallback          → /search?q=<cond>         (always-valid search)
+    //
+    // The previous fallback (polymarket.com/market/<cond>) silently
+    // 404'd on orphan conditions.  The search URL is always valid and
+    // shows the operator a relevant search result.
+    function resolveMarketUrl(row) {
+      const cond = (row && (row.condition_id || row.market_id || "")) || "";
+      const eventSlug = (row && (row.event_slug || row.market_event_slug)) || "";
+      const slug = (row && row.slug) || "";
+      if (eventSlug && slug) {
+        // Deep-link to the specific market under the event.  On
+        // polymarket.com the page is /event/<event_slug>/<market_slug>,
+        // e.g. /event/highest-temperature-in-jeddah-on-july-28-2026/
+        // highest-temperature-in-jeddah-on-july-28-2026-37c.  Hitting
+        // just /event/<event> lands on the umbrella event page that
+        // shows *all* sub-markets, which is not what the operator wants
+        // when clicking a single follow-order row.
+        return {
+          url: `${POLYMARKET_HOST}/event/${encodeURIComponent(eventSlug)}/${encodeURIComponent(slug)}`,
+          label: `${eventSlug} / ${slug}`,
+          kind: "market-under-event",
+        };
+      }
+      if (eventSlug) {
+        return {
+          url: `${POLYMARKET_HOST}/event/${encodeURIComponent(eventSlug)}`,
+          label: eventSlug,
+          kind: "event",
+        };
+      }
+      if (slug) {
+        return {
+          url: `${POLYMARKET_HOST}/market/${encodeURIComponent(slug)}`,
+          label: slug,
+          kind: "market",
+        };
+      }
+      if (!cond) {
+        return { url: `${POLYMARKET_HOST}/`, label: "—", kind: "none" };
+      }
+      // Fallback: search URL is always valid on polymarket.com.
+      return {
+        url: `${POLYMARKET_HOST}/search?q=${encodeURIComponent(cond)}`,
+        label: `搜索 ${cond.slice(0, 8)}…`,
+        kind: "search",
+      };
+    }
+    function marketLinkHtml(row) {
+      const { url, label, kind } = resolveMarketUrl(row);
+      const cond = (row && (row.condition_id || row.market_id)) || "";
+      const title = (row && row.title) ? `${row.title} · ${cond}` : cond;
+      const ttl = kind === "search" ? `Polymarket search · ${cond}` : `Polymarket · ${cond}`;
+      return `<a class="wallet-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(ttl)}" data-mkt-kind="${kind}">${escapeHtml(label)}</a>`;
+    }
+    // Prefer an event_slug over a market slug, fall back to /market/<cond>.
+    function consensusMarketLink(row) {
+      const evt = row.event_slug || "";
+      const mkt = row.market_slug || row.slug || "";
+      if (evt) {
+        const url = `${POLYMARKET_HOST}/event/${evt}`;
+        return `<a class="wallet-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortWallet(evt))}</a>`;
+      }
+      if (mkt) {
+        const url = `${POLYMARKET_HOST}/market/${mkt}`;
+        return `<a class="wallet-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortWallet(mkt))}</a>`;
+      }
+      return `<a class="wallet-link" href="${POLYMARKET_HOST}/market/${row.condition_id || ""}" target="_blank" rel="noopener noreferrer">${escapeHtml((row.condition_id || "").slice(0, 12))}…</a>`;
+    }
+    function copyCond(btn) {
+      const text = btn.getAttribute("data-copy") || "";
+      const finish = (ok) => {
+        const orig = btn.textContent;
+        btn.textContent = ok ? "已复制 ✓" : "复制失败";
+        btn.classList.toggle("copied", ok);
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove("copied"); }, 1500);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => finish(true)).catch(() => fallback());
+      } else { fallback(); }
+      function fallback() {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          finish(ok);
+        } catch (e) { finish(false); }
+      }
+    }
+
+    // ===========================================================
+    // Tab navigation
+    // ===========================================================
+    function activateTab(name) {
+      document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
+      if (name === "trading") {
+        refreshFollow();           // Trading-tab follow list
+        refreshOrders();           // audit log
+        refreshMyPositions();      // my open positions (sell-only)
+        refreshLeaderSales();      // leader-sales scan
+      }
+    }
+    document.querySelectorAll("nav.tabs button").forEach(b => {
+      b.addEventListener("click", () => activateTab(b.dataset.tab));
+    });
+    // honor ?tab=follow for the deep link used by the leader-sale alert.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "follow" || params.get("tab") === "trading") {
+      activateTab("trading");
+    }
+
+    // ===========================================================
+    // Trading-tab refreshers (Phase 4 — manual order + copy + sales + stream)
+    // ===========================================================
+
+    // ----- Header meta (collect / lookback summary from /api/dashboard) -----
+    async function refreshMeta() {
+      try {
+        const snap = await fetchJSON("/api/dashboard");
+        const metaEl = document.getElementById("meta");
+        if (metaEl) metaEl.textContent =
+          `生成时间 ${snap.generated_at} · 数据源 data-api.polymarket.com · 范围 ${snap.lookback_days} 天 / 活跃 ${snap.recent_hours}h`;
+        const footerEl = document.getElementById("footer");
+        if (footerEl) footerEl.textContent =
+          `采集滞后或异常时请点击「刷新」或 POST /api/collect/all 触发一次全量采集。`;
+      } catch (e) {
+        const metaEl = document.getElementById("meta");
+        if (metaEl) metaEl.textContent = `加载失败：${e.message}`;
+      }
+    }
+    const refreshBtn = document.getElementById("refreshBtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", refreshMeta);
+    refreshMeta();
+    setInterval(refreshMeta, REFRESH_MS);
+
+    async function refreshFollow() {
+      try {
+        const list = await fetchJSON("/api/follow-list?top=10");
+        const items = list.items || [];
+        const body = document.getElementById("followBody2");
+        if (!body) return;
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="13" class="empty">跟单名单为空（调低门槛可扩，或调整 SMART_MONEY_FOLLOW_* 阈值）</td></tr>';
+          return;
+        }
+        body.innerHTML = items.map(it => {
+          const last = it.last_trade_at ? it.last_trade_at.slice(0, 16).replace("T", " ") : "—";
+          const open = it.open_position_count || 0;
+          const src = it.source || "auto";
+          const srcBadge = src === "manual"
+            ? `<span class="badge" style="background:#5b21b6;color:#fff" title="手动 pin">📌 manual</span>`
+            : `<span class="badge neutral" title="自动筛选通过">🤖 auto</span>`;
+          const removeBtn = src === "manual"
+            ? `<button class="act-btn ghost" onclick="manualRemove('${escapeHtml(it.wallet)}')">移除</button>`
+            : "";
+          return `
+            <tr>
+              <td>${it.rank}</td>
+              <td>${srcBadge}</td>
+              <td title="${it.wallet_full}">${walletLinks(it.wallet, it.username)}</td>
+              <td>${escapeHtml(it.username)}</td>
+              <td><b>${it.smart_money_score.toFixed(1)}</b></td>
+              <td>${(it.win_rate * 100).toFixed(1)}%</td>
+              <td>${it.roi_pct.toFixed(1)}%</td>
+              <td>${it.closed_count}</td>
+              <td>${fmtSigned(it.realized_pnl)}</td>
+              <td>${escapeHtml(it.top_category || "—")}</td>
+              <td><span title="最近交易时间" style="color:${open > 0 ? 'var(--green)' : 'var(--muted)'}">${last}</span></td>
+              <td><span class="badge ${open > 0 ? 'yes' : 'no'}" title="当前持仓数">${open}</span></td>
+              <td>${removeBtn}</td>
+            </tr>`;
+        }).join("");
+      } catch (e) {
+        const el = document.getElementById("followBody2");
+        if (el) el.innerHTML = `<tr><td colspan="13" class="empty">加载失败：${e.message}</td></tr>`;
+      }
+    }
+    refreshFollow();
+    setInterval(refreshFollow, REFRESH_MS);
+
+    // ----- Manual follow UI -----
+    async function refreshManual() {
+      try {
+        const r = await fetchJSON("/api/follow-manual");
+        const items = r.items || [];
+        const body = document.getElementById("manualBody");
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="11" class="empty">还没有手动 pin 的账号</td></tr>';
+          return;
+        }
+        body.innerHTML = items.map((it, idx) => {
+          const last = it.last_active_at ? it.last_active_at.slice(0, 16).replace("T", " ") : "—";
+          const loss = it.loss_days == null ? "—" : it.loss_days;
+          const dd = it.max_drawdown_pct == null ? "—" : `${it.max_drawdown_pct.toFixed(1)}%`;
+          const idle = it.days_since_active || 999;
+          const idleCls = idle < 3 ? "yes" : (idle < 7 ? "neutral" : "no");
+          return `
+          <tr>
+            <td>${idx+1}</td>
+            <td title="${escapeHtml(it.wallet)}">${walletLinks(it.wallet, it.username)}</td>
+            <td>${escapeHtml(it.username || "—")}</td>
+            <td>${(it.roi_pct || 0).toFixed(1)}%</td>
+            <td>${fmtSigned(it.realized_pnl || 0)}</td>
+            <td><span class="badge ${loss === 0 ? 'yes' : (loss > 0 ? 'no' : 'neutral')}">${loss}</span></td>
+            <td>${dd}</td>
+            <td><span class="badge ${idleCls}" title="距上次交易">${idle < 999 ? idle.toFixed(1) + 'd' : '—'}</span></td>
+            <td>${it.open_position_count || 0}</td>
+            <td style="max-width:200px;white-space:normal;font-size:11px;color:var(--muted)">${escapeHtml(it.note || "")}</td>
+            <td><button class="act-btn ghost" onclick="manualRemove('${escapeHtml(it.wallet)}')">移除</button></td>
+          </tr>`;
+        }).join("");
+      } catch (e) {
+        const body = document.getElementById("manualBody");
+        if (body) body.innerHTML = `<tr><td colspan="11" class="empty">加载失败：${escapeHtml(e.message || "")}</td></tr>`;
+      }
+    }
+    refreshManual();
+    setInterval(refreshManual, REFRESH_MS);
+
+    async function manualAdd(wallet, username) {
+      const walletEl = document.getElementById("manualWallet");
+      const userEl = document.getElementById("manualUsername");
+      const noteEl = document.getElementById("manualNote");
+      const msgEl = document.getElementById("manualMsg");
+      const w = (wallet || walletEl.value || "").trim();
+      const u = (username || userEl.value || "").trim();
+      const n = (noteEl.value || "").trim();
+      if (!w) { msgEl.textContent = "❌ wallet 地址必填"; msgEl.style.color = "var(--red)"; return; }
+      if (!w.startsWith("0x") || !/^0x[0-9a-fA-F]{40}$/.test(w)) {
+        msgEl.textContent = `❌ wallet 格式错：必须是 0x 开头 + 40 个十六进制字符（你现在是 ${w.length} 字符）`;
+        msgEl.style.color = "var(--red)";
+        return;
+      }
+      msgEl.textContent = "提交中…"; msgEl.style.color = "var(--muted)";
+      try {
+        const r = await fetchJSON("/api/follow-manual/add", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({wallet: w, username: u || null, note: n || null}),
+        });
+        msgEl.textContent = `✓ 已加入：${w.slice(0, 10)}...（跟单名单大小：${r.follow_list_size}）`;
+        msgEl.style.color = "var(--green)";
+        walletEl.value = ""; userEl.value = ""; noteEl.value = "";
+        refreshFollow(); refreshManual();
+      } catch (e) {
+        msgEl.textContent = "❌ " + (e.message || "失败");
+        msgEl.style.color = "var(--red)";
+      }
+    }
+    async function manualRemove(wallet) {
+      if (!confirm(`确认移除 ${wallet.slice(0,10)}... 的手动 pin？`)) return;
+      try {
+        await fetchJSON("/api/follow-manual/remove", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({wallet}),
+        });
+        refreshFollow(); refreshManual();
+      } catch (e) {
+        alert("❌ " + (e.message || "失败"));
+      }
+    }
+
+    async function refreshRejected() {
+      try {
+        const r = await fetchJSON("/api/follow-candidates?top=200");
+        const items = r.items || [];
+        const snap = r.snapshot || {};
+        const body = document.getElementById("rejectedBody");
+        const meta = document.getElementById("candidatesMeta");
+        const th = snap.thresholds || {};
+        const tot = snap.totals || {};
+        if (meta) {
+          const reasonList = Object.entries(tot.rejected_by_reason || {})
+            .sort((a,b) => b[1]-a[1])
+            .map(([k,v]) => `${escapeHtml(k)}=${v}`)
+            .join(" · ");
+          meta.textContent =
+            `${tot.candidates||0} 候选 · 入选 ${tot.selected||0} · 被拒 ${tot.rejected||0} · 门槛: ` +
+            `score≥${th.window_score} days≥${th.days_active} open_pos≥${th.open_positions} ` +
+            `pnl≥$${th.window_pnl} idle≤${th.max_idle_days}d ` +
+            `trades ${th.trade_count_min}..${th.trade_count_max} ` +
+            `loss≤${th.loss_days_max}d dd≤${th.drawdown_max_pct}% period≥${th.period_min_days}d` +
+            (reasonList ? ` · ${reasonList}` : "");
+        }
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="11" class="empty">所有候选都进了跟单名单 🎉</td></tr>';
+          return;
+        }
+        body.innerHTML = items.map((it, idx) => {
+          const reasons = (it.reasons || []).map(rr => {
+            const cls = rr.includes("loss_days>") || rr.includes("drawdown>")
+              || rr.includes("idle>") || rr.includes("trade_count>")
+              || rr.includes("period<") ? "no"
+              : rr.includes("score<") || rr.includes("pnl<") ? "no"
+              : "neutral";
+            return `<span class="badge ${cls}" style="margin-right:3px">${escapeHtml(rr)}</span>`;
+          }).join("");
+          const idle = it.days_since_active || 0;
+          const idleText = idle < 999 ? idle.toFixed(1) + "d" : "—";
+          const loss = it.loss_days == null ? "—" : it.loss_days;
+          const dd = it.max_drawdown_pct == null ? "—" : `${it.max_drawdown_pct.toFixed(1)}%`;
+          const period = it.period_days == null ? "—" : `${it.period_days.toFixed(0)}d`;
+          const srcBadge = it.source === "manual"
+            ? `<span class="badge" style="background:#5b21b6;color:#fff">📌 manual</span>`
+            : `<span class="badge neutral" style="font-size:10px">auto</span>`;
+          return `
+          <tr>
+            <td>${idx+1}</td>
+            <td title="${escapeHtml(it.wallet)}">${escapeHtml(it.username || it.wallet.slice(0,10))} ${walletLinks(it.wallet, it.username)} ${srcBadge}</td>
+            <td><b>${(it.smart_window_score||0).toFixed(1)}</b></td>
+            <td>${fmtUSD(it.realized_pnl)}</td>
+            <td>${(it.roi_pct || 0).toFixed(1)}%</td>
+            <td>${it.days_active || 0}</td>
+            <td>${loss}d / ${period}</td>
+            <td>${dd}</td>
+            <td>${it.open_position_count || 0}</td>
+            <td>${escapeHtml(idleText)}</td>
+            <td>${reasons}</td>
+          </tr>`;
+        }).join("");
+      } catch (e) {
+        const body = document.getElementById("rejectedBody");
+        if (body) body.innerHTML = `<tr><td colspan="11" class="empty">加载失败：${escapeHtml(e.message || "")}</td></tr>`;
+      }
+    }
+    refreshRejected();
+    setInterval(refreshRejected, REFRESH_MS);
+
+    // ============================================================
+    // Orders panel — pagination state.  Page size is fixed (no
+    // per-page dropdown): the dropdown was confusing because the
+    // API had no offset, so changing "每页 100" silently dropped
+    // rows from view.  Now the pager can actually walk every row.
+    // ============================================================
+    const ORDERS_PAGE_SIZE = 50;
+    let ordersOffset = 0;
+    let ordersSortKey = null;          // detects sort changes to reset offset
+    function renderOrdersPager(total, totalPages, currentPage) {
+      const info = document.getElementById("ordersPageInfo");
+      const prev = document.getElementById("ordersPrev");
+      const next = document.getElementById("ordersNext");
+      if (info) info.textContent = `第 ${currentPage} / ${totalPages} 页 · 共 ${total} 条`;
+      if (prev) prev.disabled = ordersOffset <= 0;
+      if (next) next.disabled = (ordersOffset + ORDERS_PAGE_SIZE) >= total;
+    }
+    function bindOrdersPager() {
+      const prev = document.getElementById("ordersPrev");
+      const next = document.getElementById("ordersNext");
+      if (prev) prev.addEventListener("click", () => {
+        ordersOffset = Math.max(0, ordersOffset - ORDERS_PAGE_SIZE);
+        refreshOrders();
+      });
+      if (next) next.addEventListener("click", () => {
+        ordersOffset += ORDERS_PAGE_SIZE;
+        refreshOrders();
+      });
+    }
+    bindOrdersPager();
+
+    async function refreshOrders() {
+      try {
+        // Sort selector.  The new view is positions-only, so the sort
+        // key set is also different — probability is the default
+        // (matches the left-to-right reading order).
+        const sortSel = document.getElementById("ordersSort");
+        const sortVal = sortSel ? sortSel.value : "probability:desc";
+        const [sort, order] = sortVal.split(":");
+        // Fixed page size; user controls paging via prev/next buttons.
+        // 50 keeps each payload small enough that the 1-second age
+        // ticker doesn't hitch.
+        const limit = ORDERS_PAGE_SIZE;
+        // If the user changed sort, jump back to page 1 so they don't
+        // end up on a stale page that no longer maps to the new sort.
+        const sortKey = `${sort}:${order}`;
+        if (sortKey !== ordersSortKey) {
+          ordersSortKey = sortKey;
+          ordersOffset = 0;
+        }
+        const r = await fetchJSON(
+          `/api/follow-positions?sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}&limit=${limit}&offset=${ordersOffset}`
+        );
+        const items = r.items || [];
+        const total = r.total || 0;
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        // Clamp offset into the valid range.  Server might have fewer
+        // rows than we cached (e.g. age filter kicked a row out, or
+        // a follow-list wallet was removed).  Without this, the user
+        // could end up on "page 61 / 60" with an empty table.
+        const lastValidOffset = Math.max(0, (totalPages - 1) * limit);
+        if (ordersOffset > lastValidOffset) ordersOffset = lastValidOffset;
+        const currentPage = Math.floor(ordersOffset / limit) + 1;
+        renderOrdersPager(total, totalPages, currentPage);
+        const body = document.getElementById("ordersBody");
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="11" class="empty">暂无 follow-list 钱包的生效中持仓（等下一次 collect_current_positions 拉到数据；或手动添加有钱包持仓的账号）</td></tr>';
+          return;
+        }
+        body.innerHTML = items.map(it => {
+          // Direction is on the YES/NO token the trader is holding.
+          const dir = (it.direction || "").toUpperCase();
+          const cls = dir === "YES" ? "yes" : (dir === "NO" ? "no" : "neutral");
+          // Market title — prefer the cached title on CurrentPosition,
+          // fall back to the slug or a short condition id.
+          const cond = it.condition_id || "";
+          const mktInfo = resolveMarketUrl(it);
+          const title = it.title || mktInfo.label || cond.slice(0, 12) + "…";
+          const titleCell = `<a class="wallet-link" href="${escapeHtml(mktInfo.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(title)}">${escapeHtml(title.length > 50 ? title.slice(0, 50) + "…" : title)}</a>`;
+          // Wallet cell — username when known, short wallet otherwise.
+          const walletCell = walletLinks(it.wallet, it.username);
+          // Probability / entry / delta.
+          const entry = (it.avg_price || 0);
+          const cur = (it.current_price || 0);
+          const curStr = cur > 0 ? cur.toFixed(4) : "—";
+          const entryStr = entry > 0 ? entry.toFixed(4) : "—";
+          // delta_pct is computed server-side as (current - entry) /
+          // entry × 100; it ignores YES/NO side so a positive value
+          // always means the position is gaining value.
+          const delta = (typeof it.delta_pct === "number") ? it.delta_pct : null;
+          const deltaCls = delta == null ? "neutral"
+                          : delta > 0.01 ? "yes"
+                          : delta < -0.01 ? "no"
+                          : "neutral";
+          const deltaStr = delta == null ? "—"
+                          : (delta > 0 ? "+" : "") + delta.toFixed(2) + "%";
+          // Size + value.
+          const shares = (typeof it.size_shares === "number") ? it.size_shares : 0;
+          const value = (typeof it.current_value === "number") ? it.current_value : 0;
+          const sharesStr = shares > 0 ? shares.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";
+          const valueStr = value > 0 ? "$" + value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
+          // "复制事件ID" — the condition id is what the operator uses
+          // to track or refer to the market elsewhere (e.g. on
+          // Polymarket).  We don't offer a SELL here because this row
+          // describes a follow-list wallet's *position*, not ours —
+          // closing our own positions lives in the "我的持仓" panel
+          // at the top of the Trading tab.
+          // "持仓已存在" — strict.  Only set when we have actual chain
+              // evidence (server's ``original_created_at``).  When null
+              // (trade collection hasn't caught up to this row), we
+              // render "—" rather than fake "几分钟" from
+              // first_observed_at.
+              const hasCreated = !!(it.original_created_at);
+              const ageCellStyle = "white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)";
+              const ageCell = `<td class="age-cell" data-original-created-at="${escapeHtml(it.original_created_at || "")}" style="${ageCellStyle};${hasCreated ? '' : 'color:#5b657f'}">${hasCreated ? formatAgeFromIso(it.original_created_at) : '—'}</td>`;
+              const createdTitle = hasCreated
+                ? "源：钱包最早一次 BUY 成交（链上时间）"
+                : "源：本系统尚未抓到该钱包在此事件上的成交记录；等下一次 collect_trades 拉到数据即可显示";
+              const createdCell = `<td title="${escapeHtml(createdTitle)}" style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)">${formatCreatedAt(it.original_created_at)}</td>`;
+              return `
+            <tr>
+              <td>${walletCell}</td>
+              <td>${titleCell}</td>
+              <td><span class="badge ${cls}">${dir || "—"}</span></td>
+              <td>${entryStr}</td>
+              <td>${curStr}</td>
+              <td><span class="badge ${deltaCls}">${deltaStr}</span></td>
+              <td>${sharesStr}</td>
+              <td>${valueStr}</td>
+              ${ageCell}
+              ${createdCell}
+              <td style="white-space:nowrap">
+                <button class="act-btn ghost" data-copy="${escapeHtml(cond)}" onclick="copyCond(this)">复制事件ID</button>
+              </td>
+            </tr>`;
+        }).join("");
+        // Tick once so the cells are correct immediately after the re-render.
+        tickOrderAges();
+      } catch (e) {
+        const body = document.getElementById("ordersBody");
+        if (body) body.innerHTML = `<tr><td colspan="11" class="empty">加载失败：${escapeHtml(e.message || "")}</td></tr>`;
+      }
+    }
+    refreshOrders();
+    setInterval(refreshOrders, REFRESH_MS);
+
+    // Wire the orders-table sort / limit selectors so a change
+    // re-fetches immediately.  We don't poll on every keystroke —
+    // a single change event is enough.
+    const _ordSortEl = document.getElementById("ordersSort");
+    const _ordLimitEl = document.getElementById("ordersLimit");
+    if (_ordSortEl) _ordSortEl.addEventListener("change", () => refreshOrders());
+    if (_ordLimitEl) _ordLimitEl.addEventListener("change", () => refreshOrders());
+
+    // ---------------------------------------------------------------
+    // "持仓已存在" age ticker.
+    //
+    // The server stamps ``first_observed_at`` the first time the
+    // collector sees a (wallet, token) position (it is NOT in the
+    // upsert's ``update_cols``, so subsequent refreshes preserve it —
+    // the wall-clock age keeps climbing until the row is closed).
+    //
+    // Because ``refreshOrders`` runs only every ``REFRESH_MS`` we
+    // would otherwise show a frozen "3h 21m" forever.  A 1-second
+    // ticker walks the visible rows and recomputes the label purely
+    // from the stamped ISO timestamp + the client's clock.
+    // ---------------------------------------------------------------
+    function formatAgeFromIso(iso) {
+      if (!iso) return "—";
+      const t = Date.parse(iso);
+      if (isNaN(t)) return "—";
+      return formatAgeMs(Date.now() - t);
+    }
+    // Absolute local timestamp in ``YYYY-MM-DD HH:MM:SS`` form for the
+    // "创建时间" column.  We deliberately do NOT recompute this every
+    // second — only "持仓已存在" needs a live ticker.  The creation
+    // stamp is fixed at the value the server gave us.
+    function formatCreatedAt(iso) {
+      if (!iso) return "—";
+      const t = Date.parse(iso);
+      if (isNaN(t)) return "—";
+      const d = new Date(t);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} `
+           + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+    function formatAgeMs(ms) {
+      if (ms < 0 || isNaN(ms)) return "—";
+      const sec = Math.floor(ms / 1000);
+      if (sec < 60) return sec + "s";
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + "m " + (sec % 60) + "s";
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return hr + "h " + (min % 60) + "m";
+      const day = Math.floor(hr / 24);
+      if (day < 30) return day + "d " + (hr % 24) + "h";
+      const mon = Math.floor(day / 30);
+      if (mon < 12) return mon + "mo " + (day % 30) + "d";
+      const yr = Math.floor(day / 365);
+      return yr + "y " + Math.floor((day % 365) / 30) + "mo";
+    }
+    function tickOrderAges() {
+      const cells = document.querySelectorAll("#ordersBody td.age-cell");
+      if (!cells.length) return;
+      const now = Date.now();
+      cells.forEach(td => {
+        // Strict: only recompute when the server gave us a real
+        // creation timestamp.  Missing-timestamp rows already show
+        // "—" from the initial render — never fake "几分钟".
+        const iso = td.getAttribute("data-original-created-at");
+        if (!iso) return;
+        const t = Date.parse(iso);
+        if (isNaN(t)) return;
+        td.textContent = formatAgeMs(now - t);
+      });
+    }
+    tickOrderAges();
+    setInterval(tickOrderAges, 1000);
+
+    // ===========================================================
+    // Trading tab — my open positions (sell-only)
+    // ===========================================================
+    async function refreshMyPositions() {
+      const body = document.getElementById("myPosBody");
+      const hint = document.getElementById("myPosHint");
+      if (!body) return;
+      body.innerHTML = '<tr><td colspan="9" class="empty">加载中…</td></tr>';
+      try {
+        const r = await fetchJSON("/api/me/positions?limit=200");
+        const items = r.items || [];
+        if (hint) {
+          hint.textContent = items.length
+            ? `funder=${r.funder || "?"} · ${items.length} 个持仓中`
+            : `funder=${r.funder || "?"} · 当前无持仓`;
+        }
+        if (!items.length) {
+          body.innerHTML = '<tr><td colspan="9" class="empty">当前无 operator 个人账号持仓；通过 Polymarket UI 或 CLOB SDK 下 BUY 后系统会在这里出现一行。</td></tr>';
+          return;
+        }
+        body.innerHTML = items.map(it => {
+          const dir = (it.direction || "").toUpperCase();
+          const cls = dir === "YES" ? "yes" : (dir === "NO" ? "no" : "neutral");
+          const titleCell = (it.slug || it.event_slug)
+            ? `<a class="wallet-link" href="${escapeHtml(resolveMarketUrl(it).url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(it.title)}">${escapeHtml((it.title || "").slice(0, 50))}${(it.title || "").length > 50 ? "…" : ""}</a>`
+            : `<span title="${escapeHtml(it.condition_id)}">${escapeHtml((it.title || it.condition_id.slice(0, 14) + "…").slice(0, 50))}</span>`;
+          const entryStr = (it.entry_price || 0).toFixed(4);
+          const cur = (it.current_price || 0);
+          const curStr = cur > 0 ? cur.toFixed(4) : "—";
+          const pnlPct = (typeof it.pnl_pct === "number") ? it.pnl_pct : 0;
+          const pnlCls = pnlPct > 0.01 ? "yes" : pnlPct < -0.01 ? "no" : "neutral";
+          const pnlStr = (pnlPct > 0 ? "+" : "") + pnlPct.toFixed(2) + "%";
+          const pnlCash = (typeof it.cash_pnl === "number") ? it.cash_pnl : 0;
+          const pnlCashStr = "$" + pnlCash.toFixed(2);
+          const shares = (typeof it.shares === "number") ? it.shares : 0;
+          const sharesStr = shares > 0 ? shares.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—";
+          const valueStr = (it.current_value || 0) > 0
+            ? "$" + Number(it.current_value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : "—";
+          return `
+            <tr data-foid="${it.follow_order_id}">
+              <td>${titleCell}</td>
+              <td><span class="badge ${cls}">${dir || "—"}</span></td>
+              <td>${entryStr}</td>
+              <td>${curStr}</td>
+              <td><span class="badge ${pnlCls}">${pnlStr}</span></td>
+              <td>${sharesStr}</td>
+              <td>${valueStr}</td>
+              <td>${pnlCashStr}</td>
+              <td style="white-space:nowrap">
+                <button class="evt-action evt-sell" onclick="submitMySell(${it.follow_order_id}, ${cur > 0 ? cur.toFixed(4) : 0}, ${shares})" title="POST /api/me/positions/${it.follow_order_id}/sell @ ${curStr}">抛售</button>
+              </td>
+            </tr>`;
+        }).join("");
+      } catch (e) {
+        body.innerHTML = `<tr><td colspan="9" class="empty">加载失败：${escapeHtml(e.message)}</td></tr>`;
+      }
+    }
+
+    async function submitMySell(foId, currentPrice, shares) {
+      const direction = (prompt(
+        `确认抛售 FollowOrder #${foId} ？\n\n` +
+        `当前 CLOB mark = ${currentPrice || "未知"}\n` +
+        `持仓份额 = ${shares || "?"}\n\n` +
+        `请输入 SELL 目标价格（0–1 之间的小数；留空使用当前 CLOB mark）`,
+        currentPrice ? currentPrice.toString() : ""
+      ) || "").trim();
+      // Cancel button — empty input means user backed out.
+      if (direction === "") return;
+      const price = parseFloat(direction);
+      if (!Number.isFinite(price) || price <= 0 || price >= 1) {
+        flash(`❌ 价格无效：${direction}`);
+        return;
+      }
+      const confirmSend = window.confirm(
+        `⚠️ 真的下 SELL 单？\n\n` +
+        `FollowOrder #${foId}\n` +
+        `价格 = ${price.toFixed(4)}\n` +
+        `份额 = ${shares || "?"}\n\n` +
+        `点击「确定」立刻发送到 Polymarket CLOB。`
+      );
+      if (!confirmSend) return;
+      try {
+        const r = await fetch(`/api/me/positions/${foId}/sell`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ price: price }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          flash(`✅ 抛售成功 #${foId} → ${j.status} · ${j.note || ""}`);
+        } else {
+          flash(`❌ 抛售失败 #${foId} → ${j.note || j.detail || "unknown error"}`);
+        }
+        refreshMyPositions();
+      } catch (e) {
+        flash(`❌ 请求失败 #${foId}: ${e.message || e}`);
+      }
+    }
+    refreshMyPositions();
+    setInterval(refreshMyPositions, REFRESH_MS);
+
+    // ===========================================================
+    // Trading tab — leader-sales panel
+    // ===========================================================
+    async function refreshLeaderSales() {
+      const list = document.getElementById("salesList");
+      const hint = document.getElementById("salesHint");
+      try {
+        const res = await fetchJSON("/api/follow/detect-sales", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lookback_minutes: 30 }),
+        });
+        const sales = res.sales || [];
+        hint.textContent = `follow wallets=${res.follow_wallets ?? 0} · held markets=${res.held_markets ?? 0} · ${(res.lookback_minutes || 30)}min`;
+        if (!sales.length) {
+          list.innerHTML = '<div class="empty">最近 30 分钟跟单名单中的钱包没有在我们的持仓上发生 SELL。</div>';
+          return;
+        }
+        list.innerHTML = sales.map(s => `
+          <div class="sales-row alert">
+            <span>${escapeHtml(shortWallet(s.leader_wallet))} → <code>${escapeHtml((s.market_id || "").slice(0,12))}…</code></span>
+            <span>${escapeHtml((s.title || s.market_id || "").slice(0, 40))}</span>
+            <span><span class="sales-warn">SELL</span></span>
+            <span>$${Number(s.amount || 0).toFixed(2)} @ ${Number(s.price || 0).toFixed(4)}</span>
+          </div>
+        `).join("");
+      } catch (e) {
+        list.innerHTML = `<div class="empty">扫描失败：${escapeHtml(e.message)}</div>`;
+      }
+    }
+    setInterval(refreshLeaderSales, 60000); // refresh every minute
+  </script>
+</body>
+</html>

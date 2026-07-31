@@ -1,0 +1,1391 @@
+2026-07-23 23:31:07.101 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=44621 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-23 23:31:07.232 [INFO ] uvicorn.error: Started server process [44621]
+2026-07-23 23:31:07.232 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-23 23:31:07.232 [INFO ] uvicorn.error: Application startup complete.
+2026-07-23 23:31:07.232 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-23 23:44:16.123 [INFO ] smart_money.followlist: refresh_follow_list: candidates=19 auto=0 manual=0 rejected=21 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-23 23:50:22.199 [INFO ] uvicorn.error: Shutting down
+2026-07-23 23:50:22.304 [INFO ] uvicorn.error: Waiting for connections to close. (CTRL+C to force quit)
+2026-07-23 23:50:33.113 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=55839 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-23 23:50:33.241 [INFO ] uvicorn.error: Started server process [55839]
+2026-07-23 23:50:33.241 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-23 23:50:33.241 [INFO ] uvicorn.error: Application startup complete.
+2026-07-23 23:50:33.242 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-23 23:57:09.162 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=59973 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-23 23:57:09.290 [INFO ] uvicorn.error: Started server process [59973]
+2026-07-23 23:57:09.290 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-23 23:57:09.290 [INFO ] uvicorn.error: Application startup complete.
+2026-07-23 23:57:09.290 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-24 00:08:56.464 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=66535 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-24 00:08:56.593 [INFO ] uvicorn.error: Started server process [66535]
+2026-07-24 00:08:56.593 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-24 00:08:56.594 [INFO ] uvicorn.error: Application startup complete.
+2026-07-24 00:08:56.594 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-24 00:20:49.173 [INFO ] smart_money.followlist: refresh_follow_list: candidates=19 auto=0 manual=0 rejected=22 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-24 00:21:33.544 [INFO ] smart_money.followlist: refresh_follow_list: candidates=19 auto=0 manual=0 rejected=22 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yuliang/poly/poly-hedging/smart_money/__main__.py", line 1, in <module>
+    from .cli import main
+  File "/Users/yuliang/poly/poly-hedging/smart_money/cli.py", line 51, in <module>
+    from .collector import SmartMoneyCollector
+  File "/Users/yuliang/poly/poly-hedging/smart_money/collector.py", line 288
+    leaderboard_wallets = [row[0] for row in self.session.execute(stmt).all()]
+IndentationError: unexpected indent
+2026-07-24 00:33:05.988 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=80939 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-24 00:33:06.136 [INFO ] uvicorn.error: Started server process [80939]
+2026-07-24 00:33:06.136 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-24 00:33:06.136 [INFO ] uvicorn.error: Application startup complete.
+2026-07-24 00:33:06.136 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-24 00:33:26.637 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=81186 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-24 00:33:26.758 [INFO ] uvicorn.error: Started server process [81186]
+2026-07-24 00:33:26.758 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-24 00:33:26.758 [INFO ] uvicorn.error: Application startup complete.
+2026-07-24 00:33:26.759 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-24 00:33:54.570 [INFO ] smart_money.followlist: refresh_follow_list: candidates=19 auto=0 manual=0 rejected=22 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-25 16:15:48.729 [INFO ] smart_money.followlist: refresh_follow_list: candidates=43 auto=0 manual=2 rejected=44 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-25 23:00:59.741 [INFO ] uvicorn.error: Shutting down
+2026-07-25 23:00:59.843 [INFO ] uvicorn.error: Waiting for connections to close. (CTRL+C to force quit)
+2026-07-25 23:02:19.727 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=88397 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:02:19.856 [INFO ] uvicorn.error: Started server process [88397]
+2026-07-25 23:02:19.856 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:02:19.856 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:02:19.857 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:03:17.566 [INFO ] smart_money.followlist: refresh_follow_list: candidates=44 auto=0 manual=3 rejected=44 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-25 23:04:00.547 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:04:21.492 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=89743 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:04:21.616 [INFO ] uvicorn.error: Started server process [89743]
+2026-07-25 23:04:21.616 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:04:21.616 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:04:21.616 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:04:36.989 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:05:11.863 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=90310 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:05:11.997 [INFO ] uvicorn.error: Started server process [90310]
+2026-07-25 23:05:11.997 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:05:11.998 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:05:11.998 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:05:24.763 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:05:41.667 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=90654 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:05:41.789 [INFO ] uvicorn.error: Started server process [90654]
+2026-07-25 23:05:41.789 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:05:41.789 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:05:41.789 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:05:47.308 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:05:56.859 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=90846 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:05:56.986 [INFO ] uvicorn.error: Started server process [90846]
+2026-07-25 23:05:56.986 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:05:56.986 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:05:56.986 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:06:02.457 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:06:51.555 [INFO ] uvicorn.error: Shutting down
+2026-07-25 23:06:51.659 [INFO ] uvicorn.error: Waiting for connections to close. (CTRL+C to force quit)
+2026-07-25 23:06:55.196 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=91488 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:06:55.334 [INFO ] uvicorn.error: Started server process [91488]
+2026-07-25 23:06:55.334 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:06:55.334 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:06:55.334 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:07:05.852 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=91619 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:07:06.059 [INFO ] uvicorn.error: Started server process [91619]
+2026-07-25 23:07:06.059 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:07:06.059 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:07:06.059 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:07:19.517 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:07:31.924 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=91918 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:07:32.044 [INFO ] uvicorn.error: Started server process [91918]
+2026-07-25 23:07:32.044 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:07:32.044 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:07:32.044 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:08:35.755 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:09:28.308 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=93097 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:09:28.436 [INFO ] uvicorn.error: Started server process [93097]
+2026-07-25 23:09:28.436 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:09:28.436 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:09:28.436 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:09:52.370 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:10:09.024 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:10:22.926 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=93662 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:10:23.051 [INFO ] uvicorn.error: Started server process [93662]
+2026-07-25 23:10:23.051 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:10:23.051 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:10:23.051 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:10:49.085 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 644, in approve_pending_order
+    bus.publish(OrderEvent(
+                ^^^^^^^^^^
+NameError: name 'OrderEvent' is not defined
+2026-07-25 23:11:18.293 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=94258 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:11:18.425 [INFO ] uvicorn.error: Started server process [94258]
+2026-07-25 23:11:18.425 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:11:18.426 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:11:18.426 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:12:01.264 [INFO ] smart_money.executor: executor live init: wallet=0xEc48096188488cbCC5265c36272D81D638fC679A wallet_type=DEPOSIT_WALLET
+2026-07-25 23:12:18.778 [INFO ] smart_money.followlist: refresh_follow_list: candidates=44 auto=0 manual=3 rejected=44 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-25 23:15:34.553 [INFO ] smart_money.executor: executor live init: wallet=0xEc48096188488cbCC5265c36272D81D638fC679A wallet_type=DEPOSIT_WALLET
+2026-07-25 23:20:36.849 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=99899 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:20:37.132 [INFO ] uvicorn.error: Started server process [99899]
+2026-07-25 23:20:37.132 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:20:37.133 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:20:37.133 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:39:54.884 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=11988 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:39:55.078 [INFO ] uvicorn.error: Started server process [11988]
+2026-07-25 23:39:55.078 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:39:55.078 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:39:55.078 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:40:11.171 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=12182 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:40:13.056 [INFO ] uvicorn.error: Started server process [12182]
+2026-07-25 23:40:13.056 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:40:13.057 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:40:13.057 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:40:22.806 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=12377 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:40:22.934 [INFO ] uvicorn.error: Started server process [12377]
+2026-07-25 23:40:22.934 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:40:22.934 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:40:22.934 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:40:56.512 [INFO ] uvicorn.error: Shutting down
+2026-07-25 23:40:56.615 [INFO ] uvicorn.error: Waiting for connections to close. (CTRL+C to force quit)
+2026-07-25 23:41:28.787 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=13129 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:41:28.920 [INFO ] uvicorn.error: Started server process [13129]
+2026-07-25 23:41:28.920 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:41:28.920 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:41:28.921 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:43:09.771 [INFO ] smart_money.followlist: refresh_follow_list: candidates=44 auto=0 manual=3 rejected=44 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-25 23:46:35.223 [INFO ] uvicorn.error: Shutting down
+2026-07-25 23:46:35.326 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-25 23:46:35.327 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-25 23:46:35.328 [INFO ] uvicorn.error: Finished server process [13129]
+2026-07-25 23:46:37.921 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=16414 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:46:38.044 [INFO ] uvicorn.error: Started server process [16414]
+2026-07-25 23:46:38.044 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:46:38.044 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:46:38.044 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-25 23:54:26.843 [INFO ] uvicorn.error: Shutting down
+2026-07-25 23:54:26.948 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-25 23:54:26.950 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-25 23:54:26.953 [INFO ] uvicorn.error: Finished server process [16414]
+2026-07-25 23:54:29.556 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=21417 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-25 23:54:29.679 [INFO ] uvicorn.error: Started server process [21417]
+2026-07-25 23:54:29.679 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-25 23:54:29.679 [INFO ] uvicorn.error: Application startup complete.
+2026-07-25 23:54:29.680 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 00:14:45.200 [INFO ] uvicorn.error: Shutting down
+2026-07-26 00:14:45.305 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 00:14:45.310 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 00:14:45.312 [INFO ] uvicorn.error: Finished server process [21417]
+2026-07-26 00:14:47.920 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=32962 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 00:14:48.045 [INFO ] uvicorn.error: Started server process [32962]
+2026-07-26 00:14:48.045 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 00:14:48.045 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 00:14:48.045 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 00:39:08.617 [INFO ] uvicorn.error: Shutting down
+2026-07-26 00:39:08.723 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 00:39:08.726 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 00:39:08.728 [INFO ] uvicorn.error: Finished server process [32962]
+2026-07-26 00:39:11.305 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=47682 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 00:39:11.433 [INFO ] uvicorn.error: Started server process [47682]
+2026-07-26 00:39:11.433 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 00:39:11.433 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 00:39:11.433 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 00:39:16.986 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 508, in follow_orders
+    Market.condition_id, Market.slug, Market.event_slug, Market.title
+                                                         ^^^^^^^^^^^^
+AttributeError: type object 'Market' has no attribute 'title'
+2026-07-26 00:39:17.019 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 508, in follow_orders
+    Market.condition_id, Market.slug, Market.event_slug, Market.title
+                                                         ^^^^^^^^^^^^
+AttributeError: type object 'Market' has no attribute 'title'
+2026-07-26 00:39:51.641 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 508, in follow_orders
+    Market.condition_id, Market.slug, Market.event_slug, Market.question
+                                                         ^^^^^^^^^^^^
+AttributeError: type object 'Market' has no attribute 'title'
+2026-07-26 00:39:57.497 [INFO ] uvicorn.error: Shutting down
+2026-07-26 00:39:57.601 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 00:39:57.603 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 00:39:57.603 [INFO ] uvicorn.error: Finished server process [47682]
+2026-07-26 00:40:00.225 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=48250 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 00:40:00.437 [INFO ] uvicorn.error: Started server process [48250]
+2026-07-26 00:40:00.437 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 00:40:00.437 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 00:40:00.437 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 00:40:27.520 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 1517, in __getattr__
+    return getattr(self.comparator, key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Comparator' object has no attribute 'astext'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 1095, in order_events_recent
+    OrderEventLog.data["source"].astext == "operator"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 1519, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'BinaryExpression' object nor 'Comparator' object has an attribute 'astext'
+2026-07-26 00:40:35.750 [ERROR] uvicorn.error: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 1517, in __getattr__
+    return getattr(self.comparator, key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Comparator' object has no attribute 'astext'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 347, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2518, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1002, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/smart_money/dashboard_app.py", line 1095, in order_events_recent
+    OrderEventLog.data["source"].astext == "operator"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yuliang/poly/poly-hedging/.venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 1519, in __getattr__
+    raise AttributeError(
+AttributeError: Neither 'BinaryExpression' object nor 'Comparator' object has an attribute 'astext'
+2026-07-26 00:41:01.289 [INFO ] uvicorn.error: Shutting down
+2026-07-26 00:41:01.393 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 00:41:01.395 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 00:41:01.395 [INFO ] uvicorn.error: Finished server process [48250]
+2026-07-26 00:41:03.760 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=49011 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 00:41:03.862 [INFO ] uvicorn.error: Started server process [49011]
+2026-07-26 00:41:03.862 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 00:41:03.862 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 00:41:03.862 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 00:42:09.231 [INFO ] uvicorn.error: Shutting down
+2026-07-26 00:42:09.338 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 00:42:09.339 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 00:42:09.340 [INFO ] uvicorn.error: Finished server process [49011]
+2026-07-26 00:42:12.035 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=49770 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 00:42:12.166 [INFO ] uvicorn.error: Started server process [49770]
+2026-07-26 00:42:12.166 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 00:42:12.166 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 00:42:12.166 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 12:30:50.173 [INFO ] uvicorn.error: Shutting down
+2026-07-26 12:30:50.361 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 12:30:50.364 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 12:30:50.364 [INFO ] uvicorn.error: Finished server process [49770]
+2026-07-26 12:30:51.197 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=30136 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 12:30:51.350 [INFO ] uvicorn.error: Started server process [30136]
+2026-07-26 12:30:51.351 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 12:30:51.351 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 12:30:51.351 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 22:49:05.760 [INFO ] uvicorn.error: Shutting down
+2026-07-26 22:49:05.862 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 22:49:05.863 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 22:49:05.863 [INFO ] uvicorn.error: Finished server process [30136]
+2026-07-26 22:49:08.925 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=65412 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 22:49:09.111 [INFO ] uvicorn.error: Started server process [65412]
+2026-07-26 22:49:09.111 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 22:49:09.112 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 22:49:09.112 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 22:50:38.128 [INFO ] uvicorn.error: Shutting down
+2026-07-26 22:50:38.231 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 22:50:38.232 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 22:50:38.232 [INFO ] uvicorn.error: Finished server process [65412]
+2026-07-26 22:50:40.885 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=66361 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 22:50:41.032 [INFO ] uvicorn.error: Started server process [66361]
+2026-07-26 22:50:41.032 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 22:50:41.033 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 22:50:41.033 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 22:50:45.653 [INFO ] smart_money.manual_order: manual live init: wallet=0xEc48096188488cbCC5265c36272D81D638fC679A wallet_type=DEPOSIT_WALLET
+2026-07-26 22:51:01.025 [INFO ] smart_money.manual_order: manual live init: wallet=0xEc48096188488cbCC5265c36272D81D638fC679A wallet_type=DEPOSIT_WALLET
+2026-07-26 22:56:45.072 [INFO ] smart_money.followlist: refresh_follow_list: candidates=43 auto=0 manual=3 rejected=43 (thresholds: loss_days<=0 dd<=30% trades<=30 period>=14d score>=40.0 days_active>=5 open_pos>=1 window_pnl>=100 idle<=3d trade_count>=3)
+2026-07-26 22:56:49.294 [INFO ] uvicorn.error: Shutting down
+2026-07-26 22:56:49.396 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 22:56:49.397 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 22:56:49.397 [INFO ] uvicorn.error: Finished server process [66361]
+2026-07-26 22:56:52.498 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=69975 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 22:56:52.640 [INFO ] uvicorn.error: Started server process [69975]
+2026-07-26 22:56:52.640 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 22:56:52.640 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 22:56:52.640 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 23:25:49.346 [INFO ] uvicorn.error: Shutting down
+2026-07-26 23:25:49.449 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 23:25:49.449 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 23:25:49.449 [INFO ] uvicorn.error: Finished server process [69975]
+2026-07-26 23:25:52.188 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=81204 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 23:25:52.317 [INFO ] uvicorn.error: Started server process [81204]
+2026-07-26 23:25:52.317 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 23:25:52.317 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 23:25:52.317 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 23:31:13.509 [INFO ] uvicorn.error: Shutting down
+2026-07-26 23:31:13.612 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 23:31:13.614 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 23:31:13.614 [INFO ] uvicorn.error: Finished server process [81204]
+2026-07-26 23:31:16.232 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=81627 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 23:31:16.416 [INFO ] uvicorn.error: Started server process [81627]
+2026-07-26 23:31:16.416 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 23:31:16.417 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 23:31:16.417 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 23:31:55.940 [INFO ] uvicorn.error: Shutting down
+2026-07-26 23:31:56.042 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 23:31:56.042 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 23:31:56.042 [INFO ] uvicorn.error: Finished server process [81627]
+2026-07-26 23:31:58.630 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=81718 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 23:31:58.758 [INFO ] uvicorn.error: Started server process [81718]
+2026-07-26 23:31:58.758 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 23:31:58.758 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 23:31:58.758 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 23:32:41.297 [INFO ] uvicorn.error: Shutting down
+2026-07-26 23:32:41.399 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 23:32:41.401 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 23:32:41.402 [INFO ] uvicorn.error: Finished server process [81718]
+2026-07-26 23:32:44.286 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=81829 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 23:32:44.456 [INFO ] uvicorn.error: Started server process [81829]
+2026-07-26 23:32:44.456 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 23:32:44.457 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 23:32:44.457 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-26 23:37:15.877 [INFO ] uvicorn.error: Shutting down
+2026-07-26 23:37:15.979 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-26 23:37:15.980 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-26 23:37:15.980 [INFO ] uvicorn.error: Finished server process [81829]
+2026-07-26 23:37:18.617 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=82438 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-26 23:37:18.742 [INFO ] uvicorn.error: Started server process [82438]
+2026-07-26 23:37:18.742 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-26 23:37:18.743 [INFO ] uvicorn.error: Application startup complete.
+2026-07-26 23:37:18.743 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-28 22:48:25.139 [INFO ] uvicorn.error: Shutting down
+2026-07-28 22:48:25.242 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-28 22:48:25.242 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-28 22:48:25.243 [INFO ] uvicorn.error: Finished server process [82438]
+2026-07-28 22:48:25.909 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=68744 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-28 22:48:26.036 [INFO ] uvicorn.error: Started server process [68744]
+2026-07-28 22:48:26.036 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-28 22:48:26.036 [INFO ] uvicorn.error: Application startup complete.
+2026-07-28 22:48:26.037 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-28 22:50:48.903 [INFO ] uvicorn.error: Shutting down
+2026-07-28 22:50:49.007 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-28 22:50:49.008 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-28 22:50:49.008 [INFO ] uvicorn.error: Finished server process [68744]
+2026-07-28 22:50:49.603 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=69002 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-28 22:50:49.733 [INFO ] uvicorn.error: Started server process [69002]
+2026-07-28 22:50:49.733 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-28 22:50:49.733 [INFO ] uvicorn.error: Application startup complete.
+2026-07-28 22:50:49.733 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 22:50:16.673 [INFO ] uvicorn.error: Shutting down
+2026-07-29 22:50:16.776 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 22:50:16.778 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 22:50:16.778 [INFO ] uvicorn.error: Finished server process [69002]
+2026-07-29 22:50:17.383 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=94613 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 22:50:17.517 [INFO ] uvicorn.error: Started server process [94613]
+2026-07-29 22:50:17.517 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 22:50:17.517 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 22:50:17.518 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 22:52:35.980 [INFO ] uvicorn.error: Shutting down
+2026-07-29 22:52:36.085 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 22:52:36.086 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 22:52:36.086 [INFO ] uvicorn.error: Finished server process [94613]
+2026-07-29 22:52:36.647 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=94846 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 22:52:36.778 [INFO ] uvicorn.error: Started server process [94846]
+2026-07-29 22:52:36.778 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 22:52:36.778 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 22:52:36.778 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 22:57:19.738 [INFO ] uvicorn.error: Shutting down
+2026-07-29 22:57:19.840 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 22:57:19.840 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 22:57:19.841 [INFO ] uvicorn.error: Finished server process [94846]
+2026-07-29 22:57:20.472 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=95349 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 22:57:20.610 [INFO ] uvicorn.error: Started server process [95349]
+2026-07-29 22:57:20.610 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 22:57:20.610 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 22:57:20.610 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 23:05:45.214 [INFO ] uvicorn.error: Shutting down
+2026-07-29 23:05:45.316 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 23:05:45.317 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 23:05:45.317 [INFO ] uvicorn.error: Finished server process [95349]
+2026-07-29 23:05:45.887 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=95931 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 23:05:46.041 [INFO ] uvicorn.error: Started server process [95931]
+2026-07-29 23:05:46.041 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 23:05:46.041 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 23:05:46.041 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 23:07:26.273 [INFO ] uvicorn.error: Shutting down
+2026-07-29 23:07:26.376 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 23:07:26.378 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 23:07:26.379 [INFO ] uvicorn.error: Finished server process [95931]
+2026-07-29 23:07:27.000 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=96120 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 23:07:27.126 [INFO ] uvicorn.error: Started server process [96120]
+2026-07-29 23:07:27.126 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 23:07:27.126 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 23:07:27.126 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 23:08:19.906 [INFO ] uvicorn.error: Shutting down
+2026-07-29 23:08:20.009 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 23:08:20.010 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 23:08:20.010 [INFO ] uvicorn.error: Finished server process [96120]
+2026-07-29 23:08:20.630 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=96278 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 23:08:20.759 [INFO ] uvicorn.error: Started server process [96278]
+2026-07-29 23:08:20.759 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 23:08:20.759 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 23:08:20.760 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)
+2026-07-29 23:13:55.993 [INFO ] uvicorn.error: Shutting down
+2026-07-29 23:13:56.096 [INFO ] uvicorn.error: Waiting for application shutdown.
+2026-07-29 23:13:56.097 [INFO ] uvicorn.error: Application shutdown complete.
+2026-07-29 23:13:56.097 [INFO ] uvicorn.error: Finished server process [96278]
+2026-07-29 23:13:56.731 [INFO ] smart_money: [BOOT] smart_money cli started cmd=/Users/yuliang/poly/poly-hedging/smart_money/__main__.py pid=96617 argv=['serve', '--host', '0.0.0.0', '--port', '8088']
+2026-07-29 23:13:56.957 [INFO ] uvicorn.error: Started server process [96617]
+2026-07-29 23:13:56.957 [INFO ] uvicorn.error: Waiting for application startup.
+2026-07-29 23:13:56.957 [INFO ] uvicorn.error: Application startup complete.
+2026-07-29 23:13:56.957 [INFO ] uvicorn.error: Uvicorn running on http://0.0.0.0:8088 (Press CTRL+C to quit)

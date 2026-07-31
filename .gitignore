@@ -6,11 +6,14 @@ __pycache__/
 *.pyc
 *.py[cod]
 *.pyo
-state/__pycache__/
-strategy/__pycache__/
-tests/__pycache__/
-core/__pycache__/
-market/__pycache__/
+
+# Node dependencies — scheduler uses Node but `node_modules` is huge
+# and reproducible via `npm install` (or the lockfile in scheduler/).
+node_modules/
+
+# Editor / backup files
+*.bak
+*.swp
 # Virtual environments
 .env
 .env.*

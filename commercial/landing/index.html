@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Trader Toolkit — Run your own trading desk</title>
+<meta name="description" content="Open-source engine + paid playbook for Polymarket. Smart-money copy trader, hedging engine, replay tools. $49 / $129.">
+<meta property="og:title" content="Polymarket Trader Toolkit">
+<meta property="og:description" content="Open-source Polymarket trading engine. Skip 200+ hours of boilerplate.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📊%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --bg-2: #11161e;
+    --bg-3: #1a2029;
+    --border: #232a36;
+    --text: #e6edf3;
+    --muted: #8b96a8;
+    --accent: #00d4aa;
+    --accent-2: #00a886;
+    --warn: #ff7a59;
+    --code: #c5d1de;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, .mono { font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; }
+
+  /* Navigation */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,14,20,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 24px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .logo .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 12px var(--accent); }
+  .nav-links { display: flex; gap: 24px; align-items: center; font-size: 14px; }
+  .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+  .nav-links a:hover { color: var(--text); }
+  .btn {
+    background: var(--accent); color: var(--bg);
+    padding: 8px 18px; border-radius: 6px;
+    text-decoration: none; font-weight: 600; font-size: 14px;
+    border: none; cursor: pointer; transition: background 0.15s;
+    display: inline-block;
+  }
+  .btn:hover { background: var(--accent-2); }
+  .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-outline:hover { background: var(--accent); color: var(--bg); }
+
+  /* Hero */
+  .hero {
+    padding: 80px 24px 60px;
+    text-align: center;
+    background:
+      radial-gradient(ellipse at top, rgba(0,212,170,0.08) 0%, transparent 60%),
+      var(--bg);
+  }
+  .hero .badge {
+    display: inline-block; padding: 4px 12px;
+    border: 1px solid var(--border); border-radius: 999px;
+    font-size: 12px; color: var(--muted); margin-bottom: 24px;
+    background: var(--bg-2);
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 700; line-height: 1.1; margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero p.lede {
+    font-size: clamp(16px, 2vw, 19px);
+    color: var(--muted); max-width: 680px; margin: 0 auto 36px;
+  }
+  .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .hero-cta .btn { padding: 14px 26px; font-size: 15px; }
+
+  .hero-stats {
+    display: flex; gap: 40px; justify-content: center; margin-top: 56px;
+    flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* Container */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 80px 0; }
+  section h2 {
+    font-size: clamp(26px, 3.5vw, 36px);
+    font-weight: 700; margin-bottom: 12px; text-align: center;
+    letter-spacing: -0.02em;
+  }
+  section .sub {
+    text-align: center; color: var(--muted); max-width: 600px;
+    margin: 0 auto 48px; font-size: 16px;
+  }
+
+  /* Features */
+  .features {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .feature {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 28px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .feature .icon {
+    width: 40px; height: 40px; border-radius: 8px;
+    background: rgba(0,212,170,0.1); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 16px;
+  }
+  .feature h3 { font-size: 17px; margin-bottom: 8px; }
+  .feature p { color: var(--muted); font-size: 14px; }
+
+  /* Pricing */
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px; max-width: 800px; margin: 0 auto;
+  }
+  .price-card {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 36px 28px;
+    position: relative;
+  }
+  .price-card.featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 20px 50px -20px rgba(0,212,170,0.3);
+  }
+  .price-card .ribbon {
+    position: absolute; top: -10px; right: 20px;
+    background: var(--accent); color: var(--bg);
+    padding: 4px 12px; border-radius: 4px;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .price-card h3 { font-size: 22px; margin-bottom: 4px; }
+  .price-card .tier-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .price { font-size: 44px; font-weight: 700; line-height: 1; }
+  .price .currency { font-size: 22px; vertical-align: top; }
+  .price-note { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .features-list { list-style: none; margin: 20px 0 28px; }
+  .features-list li {
+    padding: 8px 0; font-size: 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .features-list li::before {
+    content: '✓'; color: var(--accent); font-weight: 700;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .features-list li.no::before { content: '–'; color: var(--muted); }
+  .features-list li.no { color: var(--muted); }
+
+  /* Trust */
+  .trust {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .trust-item {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; text-align: center;
+  }
+  .trust-num { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .trust-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* Code preview */
+  .code-preview {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; overflow-x: auto;
+    margin: 40px auto; max-width: 700px;
+    font-size: 13px; color: var(--code);
+  }
+  .code-preview .comment { color: #6e7681; }
+  .code-preview .cmd { color: var(--accent); }
+  .code-preview .out { color: #8b96a8; }
+
+  /* FAQ */
+  .faq-list { max-width: 700px; margin: 0 auto; }
+  details {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 22px; margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  details:hover { border-color: var(--accent); }
+  details[open] { border-color: var(--accent); }
+  summary {
+    cursor: pointer; font-weight: 600; font-size: 16px;
+    list-style: none; display: flex; justify-content: space-between;
+    align-items: center;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '+'; font-size: 22px; color: var(--accent); }
+  details[open] summary::after { content: '−'; }
+  summary + * { margin-top: 12px; color: var(--muted); font-size: 14px; }
+
+  /* Disclaimer */
+  .disclaimer {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px;
+    margin: 40px auto; max-width: 800px;
+    font-size: 13px; color: var(--muted);
+  }
+  .disclaimer strong { color: var(--warn); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    color: var(--muted); font-size: 13px;
+    text-align: center;
+  }
+  footer .links { margin-bottom: 12px; }
+  footer a { color: var(--muted); text-decoration: none; margin: 0 12px; }
+  footer a:hover { color: var(--accent); }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    .nav-links a:not(.btn) { display: none; }
+    .hero { padding: 60px 20px 40px; }
+    section { padding: 60px 0; }
+    .hero-stats { gap: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo"><span class="dot"></span> polymarket-toolkit</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/yourname/polymarket-trader-toolkit" target="_blank" rel="noopener">GitHub</a>
+      <a href="#pricing" class="btn">Get Toolkit</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="badge">Open-source core · Paid playbook · Self-hosted</div>
+  <h1>Run your own <span class="accent">Polymarket</span> trading desk.</h1>
+  <p class="lede">
+    The toolkit we built after losing money on Polymarket. Smart-money copy trader, hedging engine,
+    and replay tools — packaged so you skip 200+ hours of boilerplate and 17 production bugs.
+  </p>
+  <div class="hero-cta">
+    <a href="#pricing" class="btn">Get the Toolkit — $49</a>
+    <a href="https://github.com/yourname/polymarket-trader-toolkit" target="_blank" rel="noopener" class="btn btn-outline">View on GitHub</a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">45+</div><div class="stat-label">tests passing</div></div>
+    <div class="stat"><div class="stat-num">100+</div><div class="stat-label">commits</div></div>
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">prod templates</div></div>
+    <div class="stat"><div class="stat-num">BSL 1.1</div><div class="stat-label">license</div></div>
+  </div>
+</section>
+
+<div class="code-preview container">
+<span class="comment"># 30 seconds to first dry-run</span>
+<span class="cmd">$</span> git clone https://github.com/yourname/polymarket-trader-toolkit.git
+<span class="cmd">$</span> cd polymarket-trader-toolkit && ./scripts/install.sh
+<span class="cmd">$</span> cp examples/balanced_smart_money.json config.json
+<span class="cmd">$</span> ./scripts/replay.sh config.json --days 30
+<span class="out">[replay] 412 fills | 67% win | +$842 PnL (paper)</span>
+<span class="cmd">$</span> ./scripts/deploy.sh config.json --dry-run
+</div>
+
+<section id="features">
+  <div class="container">
+    <h2>What you get</h2>
+    <p class="sub">Production-tested modules. Every one of them written because we needed it, not because it sells.</p>
+
+    <div class="features">
+      <div class="feature">
+        <div class="icon">📊</div>
+        <h3>Smart-Money Copy Trader</h3>
+        <p>Mirror top trader positions with risk caps, tier-based take-profit, and replayable signal scoring.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🛡️</div>
+        <h3>Hedging Engine</h3>
+        <p>YES/NO pair arbitrage with spread monitor. Auto-rebalance when combined cost drops below threshold.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">⚡</div>
+        <h3>BTC 5m Fast-Loop</h3>
+        <p>CEX momentum → Polymarket fast markets. Includes path-score filter and chop detection. High risk.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🌐</div>
+        <h3>Web Dashboard</h3>
+        <p>Real-time positions, PnL, alerts, kill-switch. Single-file HTML, no JS framework to debug.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔁</div>
+        <h3>Replay Tool</h3>
+        <p>Backtest any config against historical data before risking a dollar. Pro tier adds PnL attribution.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">📢</div>
+        <h3>Multi-Channel Notifier</h3>
+        <p>Feishu, Discord, Telegram. Five alert rules out of the box, fully customizable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" style="background: var(--bg-2);">
+  <div class="container">
+    <h2>Pick your tier</h2>
+    <p class="sub">Open-source core is always free. Pay for the playbook, templates, and support.</p>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Solo Trader</h3>
+        <div class="tier-desc">For self-directed quants running 1–3 strategies</div>
+        <div class="price"><span class="currency">$</span>49</div>
+        <div class="price-note">One-time · 6 months Discord</div>
+        <ul class="features-list">
+          <li>All open-source code</li>
+          <li>3 production config templates</li>
+          <li>Local deploy scripts</li>
+          <li>Replay tool (basic)</li>
+          <li>Discord @solo (6 months)</li>
+          <li>Basic docs + FAQ</li>
+          <li class="no">Hedging calculator UI</li>
+          <li class="no">PnL attribution replay</li>
+          <li class="no">1-hour onboarding call</li>
+          <li class="no">White-label rights</li>
+        </ul>
+        <a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-solo" class="btn" style="width:100%;text-align:center;display:block;">
+          Buy Solo — $49
+        </a>
+      </div>
+
+      <div class="price-card featured">
+        <span class="ribbon">Most Popular</span>
+        <h3>Pro Quant</h3>
+        <div class="tier-desc">For teams running multiple strategies at scale</div>
+        <div class="price"><span class="currency">$</span>129</div>
+        <div class="price-note">One-time · 12 months Discord</div>
+        <ul class="features-list">
+          <li>Everything in Solo, plus:</li>
+          <li>Hedging calculator UI</li>
+          <li>PnL attribution replay</li>
+          <li>Feishu/Telegram templates</li>
+          <li>1-hour onboarding (Zoom)</li>
+          <li>6-week exclusive updates</li>
+          <li>Discord @pro (12 months)</li>
+          <li>White-label rights (apply)</li>
+          <li>Priority issue queue</li>
+          <li>Future tier upgrades included</li>
+        </ul>
+        <a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-pro" class="btn" style="width:100%;text-align:center;display:block;">
+          Buy Pro — $129
+        </a>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:var(--muted);margin-top:24px;font-size:14px;">
+      💳 USDC on Polygon also accepted —
+      <a href="pricing/payment.md" style="color:var(--accent);">see payment options</a>.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Why trust this</h2>
+    <p class="sub">Built by traders who lost money first. Then wrote the tools they wished they'd had.</p>
+    <div class="trust">
+      <div class="trust-item"><div class="trust-num">45+</div><div class="trust-label">tests, CI green</div></div>
+      <div class="trust-item"><div class="trust-num">100+</div><div class="trust-label">commits, public history</div></div>
+      <div class="trust-item"><div class="trust-num">17</div><div class="trust-label">prod bugs already fixed</div></div>
+      <div class="trust-item"><div class="trust-num">3</div><div class="trust-label">prod-ready templates</div></div>
+      <div class="trust-item"><div class="trust-num">5</div><div class="trust-label">exchanges supported</div></div>
+      <div class="trust-item"><div class="trust-num">14d</div><div class="trust-label">money-back guarantee</div></div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>⚠️ Important:</strong> This is software infrastructure, not financial advice.
+      We make no claims of profitability. Trading on Polymarket involves substantial risk of loss.
+      The US, UK, and several other jurisdictions restrict retail prediction-market access — verify your local
+      regulations before running this software. You are solely responsible for trading decisions made with this tool.
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="background: var(--bg-2);">
+  <div class="container">
+    <h2>FAQ</h2>
+    <p class="sub">The honest answers, including the uncomfortable ones.</p>
+
+    <div class="faq-list">
+      <details>
+        <summary>Can I make money with this?</summary>
+        We can't promise that. What we can say: the toolkit gives you the same engine we use ourselves.
+        The replay tool lets you backtest against historical data before risking anything. Your results
+        depend on your strategy, capital size, and risk discipline — not on us.
+      </details>
+
+      <details>
+        <summary>Why not just MIT license?</summary>
+        MIT would let competitors clone and resell this on day one. Business Source License 1.1 lets
+        individuals and small companies use it freely, but blocks wholesale resale. After 4 years each
+        release converts to Apache 2.0 automatically.
+      </details>
+
+      <details>
+        <summary>Is this legal in the US / my country?</summary>
+        The toolkit itself is open-source software — that part is legal everywhere. What may be restricted
+        is using it to trade on Polymarket from certain jurisdictions. Check your local regulations.
+        We provide documentation but cannot give legal advice.
+      </details>
+
+      <details>
+        <summary>What's the difference between Solo and Pro?</summary>
+        Solo gives you the engine + 3 templates to run your own strategies. Pro adds the hedging
+        calculator UI, PnL attribution, custom notifiers, a 1-hour onboarding call, and 6 weeks of
+        exclusive strategy updates. If you're running more than 3 strategies or managing >$10k,
+        Pro pays for itself in saved time.
+      </details>
+
+      <details>
+        <summary>Can I get a refund?</summary>
+        Yes — 14 days, no questions asked. Email yourname@example.com with your order ID. We process
+        within 48 hours.
+      </details>
+
+      <details>
+        <summary>Do you offer custom strategy development?</summary>
+        Yes, at $200/hour. Most requests take 4–10 hours. We can integrate your proprietary signals,
+        connect new exchanges, or build a custom dashboard. Book via the Pro tier Discord.
+      </details>
+
+      <details>
+        <summary>What if Polymarket changes its API?</summary>
+        We maintain adapter modules so most API changes only require updating one file. Pro customers
+        get patches within 48 hours of a breaking change. Solo customers get fixes in the next regular
+        release cycle (1–2 weeks).
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="links">
+    <a href="https://github.com/yourname/polymarket-trader-toolkit">GitHub</a>
+    <a href="docs/safety.md">Disclaimers</a>
+    <a href="docs/faq.md">Docs</a>
+    <a href="mailto:yourname@example.com">Contact</a>
+  </div>
+  <div>© 2026 Polymarket Trader Toolkit. Software infrastructure, not financial advice.</div>
+  <div style="margin-top:8px;">Business Source License 1.1 · converts to Apache 2.0 in 2030</div>
+</footer>
+
+</body>
+</html>

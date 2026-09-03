@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Polymarket Trader Toolkit — Run your own trading desk</title>
-<meta name="description" content="Open-source engine + paid playbook for Polymarket. Smart-money copy trader, hedging engine, replay tools. $49 / $129.">
-<meta property="og:title" content="Polymarket Trader Toolkit">
-<meta property="og:description" content="Open-source Polymarket trading engine. Skip 200+ hours of boilerplate.">
+<title>poly-hedging — Polymarket event-hedging toolkit (BTC 5m, copy-trader, dual-wallet)</title>
+<meta name="description" content="Open-source Polymarket event-hedging toolkit. BTC 5-min FastLoop, top-user copy trader, and dual-wallet event hedging. From the authors who lost money first.">
+<meta property="og:title" content="poly-hedging — Polymarket event-hedging toolkit">
+<meta property="og:description" content="BTC 5-min FastLoop. Top-user copy trading. Dual-wallet event hedging. Open-source + paid playbook.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📊%3C/text%3E%3C/svg%3E">
 <style>
@@ -248,35 +248,37 @@
       <a href="#features">Features</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
-      <a href="https://github.com/yourname/polymarket-trader-toolkit" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/ylyl6561/poly-hedging" target="_blank" rel="noopener">GitHub</a>
       <a href="#pricing" class="btn">Get Toolkit</a>
     </div>
   </div>
 </nav>
 
 <section class="hero">
-  <div class="badge">Open-source core · Paid playbook · Self-hosted</div>
-  <h1>Run your own <span class="accent">Polymarket</span> trading desk.</h1>
+  <div class="badge">polymarket event-hedging toolkit · open-source core · self-hosted</div>
+  <h1>Hedge your exposure on <span class="accent">Polymarket</span>.</h1>
   <p class="lede">
-    The toolkit we built after losing money on Polymarket. Smart-money copy trader, hedging engine,
-    and replay tools — packaged so you skip 200+ hours of boilerplate and 17 production bugs.
+    <strong>BTC 5-minute FastLoop</strong> (Binance momentum → Polymarket fast markets), a
+    <strong>top-user copy trader</strong> (mirrors the leaderboard), and a
+    <strong>dual-wallet event hedging</strong> engine for YES/NO pair trades — the toolkit we built
+    after losing money on Polymarket first. Self-hosted. Dry-run by default.
   </p>
   <div class="hero-cta">
     <a href="#pricing" class="btn">Get the Toolkit — $49</a>
-    <a href="https://github.com/yourname/polymarket-trader-toolkit" target="_blank" rel="noopener" class="btn btn-outline">View on GitHub</a>
+    <a href="https://github.com/ylyl6561/poly-hedging" target="_blank" rel="noopener" class="btn btn-outline">View on GitHub</a>
   </div>
 
   <div class="hero-stats">
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">strategies bundled</div></div>
     <div class="stat"><div class="stat-num">45+</div><div class="stat-label">tests passing</div></div>
     <div class="stat"><div class="stat-num">100+</div><div class="stat-label">commits</div></div>
-    <div class="stat"><div class="stat-num">3</div><div class="stat-label">prod templates</div></div>
     <div class="stat"><div class="stat-num">BSL 1.1</div><div class="stat-label">license</div></div>
   </div>
 </section>
 
 <div class="code-preview container">
 <span class="comment"># 30 seconds to first dry-run</span>
-<span class="cmd">$</span> git clone https://github.com/yourname/polymarket-trader-toolkit.git
+<span class="cmd">$</span> git clone https://github.com/ylyl6561/poly-hedging.git
 <span class="cmd">$</span> cd polymarket-trader-toolkit && ./scripts/install.sh
 <span class="cmd">$</span> cp examples/balanced_smart_money.json config.json
 <span class="cmd">$</span> ./scripts/replay.sh config.json --days 30
@@ -347,7 +349,7 @@
           <li class="no">1-hour onboarding call</li>
           <li class="no">White-label rights</li>
         </ul>
-        <a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-solo" class="btn" style="width:100%;text-align:center;display:block;">
+        <a href="https://liangyu5.gumroad.com/l//l/polymarket-toolkit-solo" class="btn" style="width:100%;text-align:center;display:block;">
           Buy Solo — $49
         </a>
       </div>
@@ -370,7 +372,7 @@
           <li>Priority issue queue</li>
           <li>Future tier upgrades included</li>
         </ul>
-        <a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-pro" class="btn" style="width:100%;text-align:center;display:block;">
+        <a href="https://liangyu5.gumroad.com/l//l/polymarket-toolkit-pro" class="btn" style="width:100%;text-align:center;display:block;">
           Buy Pro — $129
         </a>
       </div>
@@ -464,7 +466,7 @@
 
 <footer>
   <div class="links">
-    <a href="https://github.com/yourname/polymarket-trader-toolkit">GitHub</a>
+    <a href="https://github.com/ylyl6561/poly-hedging">GitHub</a>
     <a href="docs/safety.md">Disclaimers</a>
     <a href="docs/faq.md">Docs</a>
     <a href="mailto:yourname@example.com">Contact</a>

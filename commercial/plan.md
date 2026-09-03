@@ -1,6 +1,8 @@
-# Polymarket Trader Toolkit — 商业化 MVP 方案
+# poly-hedging — 商业化 MVP 方案
 
-> **TL;DR**：把 `poly-hedging` 仓库拆分成 1 个开源仓库 + 1 个商业仓库（模板 + 文档 + 支持），$49 / $129 两档套餐，首批 100 用户 4 周内可达。
+> **TL;DR**：把 `poly-hedging` 仓库（Polymarket 事件对冲工具集，3 个策略）拆分成 1 个开源仓库 + 1 个商业仓库（模板 + 文档 + 支持），$49 / $129 两档套餐，首批 100 用户 4 周内可达。
+
+> **项目背景 / 是什么**：见 [`overview.md`](overview.md) —— 简单说就是 Polymarket 上的事件对冲工具集：**BTC 5 分钟 FastLoop**（CEX 动量交易快闪市场）+ **Top 用户跟单**（复制排行榜钱包）+ **双钱包事件对冲**（YES/NO 配对套利）。这三者共用同一套 CLOB / 数据 / 通知层，所以打包卖。
 
 ---
 

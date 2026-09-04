@@ -4,7 +4,7 @@
 
 The goal is not virality. It's **targeted reach**: find the 100 Polymarket traders who are
 technical enough to use a Python toolkit, active enough to trade, and frustrated enough
-to pay $49 for a solution.
+to pay $99 for a solution.
 
 ---
 
@@ -113,7 +113,7 @@ with a soft CTA to GitHub + landing page.
 ## Channel 3: Hacker News / GitHub (Week 2)
 
 **Why HN:** High-signal traffic. If you hit the front page for 6 hours, that's 20-50k
-pageviews. Even 1% converting to $49 = 10-20 sales.
+pageviews. Even 1% converting to $99 = 10-20 sales.
 
 **Why GitHub:** Stars + contributions = social proof.
 
@@ -123,7 +123,7 @@ Post on a Tuesday or Wednesday at 9am PT (when HN's front page rotates).
 
 ```
 TITLE: Show HN: I built a Polymarket trading toolkit after losing money on 5 CLOB gotchas
-SUBTITLE: 45 tests, 3 prod templates, open-source engine + paid playbook
+SUBTITLE: 45 tests, 3 prod templates, open-source engine + $99 toolkit
 
 BODY:
 
@@ -140,7 +140,7 @@ What I built: an open-source Polymarket trading toolkit with:
 - Web dashboard with kill-switch
 
 The open-source core (engine + replay + templates) is free.
-The paid tier ($49/$129) is the playbook: production configs, docs, and support.
+The paid tier ($99 one-time) is the toolkit: production configs, docs, and support.
 
 [GitHub link]
 [Landing page link]

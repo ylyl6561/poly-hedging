@@ -8,6 +8,8 @@
 - Each tweet: post, then reply to it 2x in the next hour to boost algorithm reach
 - Use a tool like `twikit.com` or `charm.sh` for quick quote-tweet variants
 
+**Pricing to mention everywhere:** **$99 one-time** (use code `FIRST48` for 20% off in launch window).
+
 ---
 
 ## Tweet 1: The Honest Hook (Day 1, Week 1)
@@ -16,9 +18,9 @@
 >
 > The bug that cost me real money is now the first thing the system warns about.
 >
-> Open-sourcing the engine today → [TOOLKIT_LINK]
+> Open-sourcing the engine today → [GITHUB_LINK]
 >
-> (The paid playbook has 3 templates that would have saved me $2k+)
+> The full toolkit (config templates, replay, hedging UI, onboarding call) is $99 one-time.
 
 ---
 
@@ -32,7 +34,7 @@
 > 🔁 replay tool
 > 🌐 dashboard
 >
-> Open-source core, paid playbook: [GITHUB_LINK]
+> Open-source core, $99 toolkit: [TOOLKIT_LINK]
 >
 > 45 tests, 100+ commits, 0 magic wands. Just the code.
 
@@ -50,7 +52,7 @@
 > **With polymarket-toolkit:**
 > - 30 min to first dry-run
 > - same bugs already fixed
-> - $49 one-time
+> - $99 one-time, lifetime updates
 >
 > [TOOLKIT_LINK]
 
@@ -67,7 +69,7 @@
 >
 > Now you know before you risk real money.
 >
-> Get the toolkit → [TOOLKIT_LINK]
+> Get the toolkit ($99) → [TOOLKIT_LINK]
 
 ---
 
@@ -75,16 +77,14 @@
 
 > We shipped it.
 >
-> Polymarket Trader Toolkit — open-source engine + 3 production templates.
+> Polymarket Trader Toolkit — open-source engine + 3 production templates + replay + hedging UI.
 >
 > Built because we lost money first. Tested because we run it ourselves.
 >
-> Solo $49 / Pro $129
+> $99 one-time. Use FIRST48 for 20% off.
 >
 > GitHub: [GITHUB_LINK]
 > Landing: [TOOLKIT_LINK]
->
-> First 48 hours: 20% off with code FIRST48
 
 ---
 
@@ -193,8 +193,9 @@ I kept deploying strategies that looked great on paper and then blew up in live 
 The replay tool is part of a larger open-source project:
 [GITHUB_LINK]
 
-Solo tier ($49) gets you 3 production config templates + the replay tool.
- Pro ($129) adds PnL attribution, hedging calculator, and onboarding.
+The full toolkit ($99 one-time) includes the open-source engine, 3 production config
+templates, the hedging calculator UI, PnL-attribution replay, Feishu/Discord/Telegram
+notifier templates, and a 1-hour onboarding call.
 
 Again: this is a tool, not financial advice. Check your local regulations.
 

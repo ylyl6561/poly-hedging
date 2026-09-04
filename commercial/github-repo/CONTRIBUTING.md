@@ -9,10 +9,9 @@ Thanks for your interest in the Polymarket Trader Toolkit!
 ✅ **Exchange API adapters** — for new prediction markets (Kalshi, Limitless, etc.)
 ✅ **Test coverage** — for uncovered edge cases
 
-## What goes in Pro tier only
+## What goes in the paid toolkit only
 
-🔒 **New strategy templates** — to maintain the commercial value
-🔒 **Replay Pro features** — PnL attribution, Sharpe calculator
+🔒 **Production config templates** — to maintain the commercial value
 🔒 **Hedging calculator UI** — Web frontend
 🔒 **Custom notifier templates** — Feishu/Telegram integrations
 
@@ -21,8 +20,8 @@ If you're unsure, open a Discussion first.
 ## Development setup
 
 ```bash
-git clone https://github.com/yourname/polymarket-trader-toolkit.git
-cd polymarket-trader-toolkit
+git clone https://github.com/ylyl6561/poly-hedging.git
+cd poly-hedging
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 pre-commit install
@@ -45,7 +44,7 @@ pre-commit install
 
 ## Security issues
 
-**DO NOT** open a public issue for security vulnerabilities. Email yourname@example.com with `[SECURITY]` in the subject.
+**DO NOT** open a public issue for security vulnerabilities. Email liangyu5@example.com with `[SECURITY]` in the subject.
 
 ## Code of conduct
 

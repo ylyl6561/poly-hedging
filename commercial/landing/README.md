@@ -40,18 +40,18 @@ vercel --prod
 ### Option D: GitHub Pages
 
 ```bash
-# 1. Create repo: yourname.github.io
+# 1. Create repo: liangyu5.github.io
 # 2. Copy commercial/landing/* to repo root
 # 3. Push to main
-# Result: https://yourname.github.io
+# Result: https://liangyu5.github.io
 ```
 
 ---
 
 ## Pre-launch checklist
 
-- [ ] Replace all `yourname` / `yourname@example.com` placeholders
-- [ ] Replace `yournamespace.gumroad.com` with real Gumroad URLs
+- [ ] Replace all `yourname` / `yourname@example.com` placeholders (done in repo, but verify any custom additions)
+- [ ] Confirm Gumroad URL: `https://liangyu5.gumroad.com/l/polymarket-toolkit` (single product, $99)
 - [ ] Add `pricing/payment.md` link to footer
 - [ ] Add real Discord invite link
 - [ ] Take 3 dashboard screenshots, add to `/assets/`, replace hero placeholder
@@ -59,7 +59,7 @@ vercel --prod
 - [ ] Run Lighthouse audit (aim for 95+ on all 4 categories)
 - [ ] Add Google Analytics or Plausible (Plausible recommended for privacy)
 - [ ] Submit to Google Search Console
-- [ ] Set up Gumroad product pages (Solo + Pro tiers)
+- [ ] Set up Gumroad product page ($99 single tier)
 - [ ] Test Gumroad checkout end-to-end (use test mode)
 - [ ] Set up email auto-responder with download link
 

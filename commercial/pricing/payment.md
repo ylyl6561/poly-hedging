@@ -20,40 +20,30 @@ customers and the 5% savings matter.
 
 ---
 
-## Gumroad Setup (Recommended)
+## Product Setup (Single $99 Tier)
 
-### 1. Create products
+We ship **one** product, not two — keeps the funnel simple.
+
+### Gumroad product page
 
 Go to https://gumroad.com/products/new
 
-**Product 1: Solo Trader Toolkit — $49**
-- Price: $49
+**Product: Polymarket Trader Toolkit — $99**
+- Price: $99
 - Type: Digital download
-- File: `polymarket-toolkit-solo.zip` (the zip you ship)
+- File: `polymarket-toolkit.zip` (the zip you ship)
 - License: "One purchase per person" + custom field: license key
 - Post-purchase: send Discord invite link + download link + install guide
-- Tags: `polymarket`, `trading`, `toolkit`, `python`
+- Tags: `polymarket`, `trading`, `toolkit`, `python`, `hedging`
+- Discount code: `FIRST48` (20% off, valid for 48 hours after launch)
 
-**Product 2: Pro Quant Toolkit — $129**
-- Same structure, higher price
-- Add-on: "Lifetime Pass $399" as a separate product
-
-### 2. Embed on landing page
+### Embed on landing page
 
 ```html
-<!-- Gumroad embed (replace YOUR_GUMROAD_PATH) -->
-<div class="gumroad-embed" data-gumroad-single-product="true">
-  <a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-solo">Buy Solo — $49</a>
-</div>
-<script src="https://gump.ter/gumroad.js" async></script>
+<a href="https://liangyu5.gumroad.com/l/polymarket-toolkit" class="btn">Buy the Toolkit — $99</a>
 ```
 
-Or use the overlay:
-```html
-<a href="https://yournamespace.gumroad.com/l/polymarket-toolkit-solo" class="btn gumroad-button">Buy Solo — $49</a>
-```
-
-### 3. Set up email automation
+### Set up email automation
 
 Gumroad → Product → "Thank you page" → paste:
 ```
@@ -78,7 +68,7 @@ Go to https://app.lemonsqueezy.com/register (free, no KYC for selling digital go
 ### 2. Add USDC as custom payment option
 
 Lemon Squeezy natively supports card + PayPal. For USDC, add a custom field
-to your checkout: "Want to pay in USDC? Email yourname@example.com after purchase."
+to your checkout: "Want to pay in USDC? Email liangyu5@example.com after purchase."
 
 This gives you the USDC wallet address to send to. Not seamless, but workable.
 
@@ -100,9 +90,9 @@ cast wallet address --private-key 0xYOUR_PRIVATE_KEY
 
 ### Delivery flow
 
-1. Customer emails `pay@yourdomain.com` with "USDC payment for Pro Toolkit"
+1. Customer emails `pay@liangyu5.example.com` with "USDC payment for Polymarket Toolkit"
 2. Reply with:
-   - Amount: 129 USDC (~$129 at time of email, or fix to $129)
+   - Amount: 99 USDC (~$99 at time of email, or fix to $99)
    - Address: `0xAbC123...` (Polygon)
    - Note: "Send exact amount. Include your email as transfer memo."
 3. After confirming on-chain:
@@ -112,7 +102,7 @@ cast wallet address --private-key 0xYOUR_PRIVATE_KEY
 
 ### Pricing in USDC
 
-Use a fixed USD amount, not a floating USDC amount (to avoid "I paid $130 when it was $129" disputes).
+Use a fixed USD amount, not a floating USDC amount (to avoid "I paid $100 when it was $99" disputes).
 
 ```python
 # Rough conversion (don't use in production)
@@ -120,10 +110,10 @@ import requests
 resp = requests.get("https://api.coingecko.com/api/v3/simple/price",
                     params={"ids": "usd-coin", "vs_currencies": "usd"})
 usdc_price = resp.json()["usd-coin"]["usd"]  # ~1.00
-usdc_amount = 129 / usdc_price  # 129 USDC
+usdc_amount = 99 / usdc_price  # 99 USDC
 ```
 
-Or just tell customer: "Send approximately 129 USDC. I'll confirm and refund any overpayment."
+Or just tell customer: "Send approximately 99 USDC. I'll confirm and refund any overpayment."
 
 ### Anti-fraud note
 
@@ -135,10 +125,10 @@ Or just tell customer: "Send approximately 129 USDC. I'll confirm and refund any
 
 ## What to Ship (Delivery Zip Contents)
 
-### `polymarket-toolkit-solo.zip` contents
+### `polymarket-toolkit.zip` contents (single $99 product)
 
 ```
-polymarket-toolkit-solo/
+polymarket-toolkit/
 ├── README.md                    # Quickstart guide
 ├── LICENSE.txt                  # Personal license (key in filename)
 ├── examples/
@@ -151,30 +141,18 @@ polymarket-toolkit-solo/
 │   ├── install.sh
 │   ├── deploy.sh
 │   └── replay.sh
+├── src/
+│   ├── hedging_calculator/      # Standalone web app (Pro feature, included)
+│   ├── replay_pro/              # PnL attribution scripts (Pro feature, included)
+│   └── notifiers/               # Feishu / Telegram / Discord templates
 ├── docs/
 │   ├── getting-started.md
 │   ├── strategy-playbook.md
-│   └── safety.md
-└── LICENSE_KEY.txt              # Your Gumroad license key
-```
-
-### `polymarket-toolkit-pro.zip` contents
-
-Everything above, plus:
-```
-├── src/
-│   ├── hedging_calculator/      # Standalone web app
-│   ├── replay_pro/              # PnL attribution scripts
-│   └── notifiers/               # Feishu/Telegram templates
-├── docs/
 │   ├── onboarding.md
-│   └── api_reference.md
-├── templates/
-│   ├── feishu_alerts.yaml
-│   ├── telegram_bot.py
-│   └── discord_webhook.py
-├── ONBOARDING_VOUCHER.txt       # Zoom scheduling link
-└── LICENSE_KEY.txt
+│   ├── api_reference.md
+│   └── safety.md
+├── ONBOARDING_VOUCHER.txt       # Zoom scheduling link for the 1-hour call
+└── LICENSE_KEY.txt              # Your Gumroad license key
 ```
 
 ---

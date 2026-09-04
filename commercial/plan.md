@@ -1,6 +1,6 @@
 # poly-hedging — 商业化 MVP 方案
 
-> **TL;DR**：把 `poly-hedging` 仓库（Polymarket 事件对冲工具集，3 个策略）拆分成 1 个开源仓库 + 1 个商业仓库（模板 + 文档 + 支持），$49 / $129 两档套餐，首批 100 用户 4 周内可达。
+> **TL;DR**：把 `poly-hedging` 仓库（Polymarket 事件对冲工具集，3 个策略）拆分成 1 个开源仓库 + 1 个商业仓库（模板 + 文档 + 支持），**$99 单品**，首批 100 用户 4 周内可达。
 
 > **项目背景 / 是什么**：见 [`overview.md`](overview.md) —— 简单说就是 Polymarket 上的事件对冲工具集：**BTC 5 分钟 FastLoop**（CEX 动量交易快闪市场）+ **Top 用户跟单**（复制排行榜钱包）+ **双钱包事件对冲**（YES/NO 配对套利）。这三者共用同一套 CLOB / 数据 / 通知层，所以打包卖。
 
@@ -47,10 +47,11 @@
 
 ---
 
-## 3. 两档套餐（$49 / $129）
+## 3. 单品定价：**$99**
 
-### Tier 1: **Solo Trader Toolkit — $49**
-目标：自己跑 1-3 个策略的散户 / quant
+目标：自己跑 1-3 个策略的散户 / quant / 团队
+
+**Polymarket Trader Toolkit — $99**（一次买断）
 
 包含：
 - ✅ 完整开源核心代码（永远免费，会持续更新）
@@ -60,30 +61,20 @@
   - `aggressive_pairs_hedge.json` — YES/NO 配对套利
 - ✅ **5 个 .env 模板**（testnet / mainnet 各场景）
 - ✅ **本地部署脚本**（一键 `make deploy`）
-- ✅ **Discord 频道访问**（@solo 频道，6 个月）
-- ✅ **基础文档**：安装、配置、运行、回放
-
-不含：1对1 onboarding、电话支持、自定义策略开发
-
-### Tier 2: **Pro Quant Toolkit — $129**
-目标：团队 / 高交易量 / 需要定制
-
-包含 Solo 全部，外加：
-- ✅ **Hedging 计算器 Web UI**（`hedging/calculator/`）
+- ✅ **Hedging 计算器 Web UI**
 - ✅ **Replay 分析 Pro 脚本**（含 PnL 归因、Sharpe、最大回撤）
 - ✅ **飞书 / Telegram 通知模板**（5 种告警规则）
 - ✅ **6 周独家更新窗口**（新策略、新交易所适配）
 - ✅ **1 小时一对一 onboarding**（Zoom，30 天内预约）
-- ✅ **Discord @pro 频道**（12 个月）
-- ✅ **API 配额扩展**（如果你做云端 SaaS）
+- ✅ **Discord 频道访问**（12 个月）
 - ✅ **白标授权**（可卖给客户，不限数量，需书面申请）
+- ✅ **Lifetime updates**（未来所有版本免费）
 
-不含：完全定制的策略开发（按 $200/小时另算）、托管交易
+不含：完全定制的策略开发（按 $200/小时另算）、托管交易。
 
-### Bundle & Upsell
-- **Starter bundle $39**：纯文档 + 模板，不含核心代码（给纯 PM / 学生）
-- **Lifetime pass $399**：一次买断，所有未来版本（含 Pro）
-- **Team pack $499**：5 个 Pro 席位，共享 onboarding
+### Upsell
+- **Lifetime pass $399**：一次买断，未来所有 Pro-tier 功能升级
+- **Team pack $499**：5 个席位共享 onboarding（同一公司内部用）
 
 ---
 
@@ -149,13 +140,13 @@ polymarket-trader-toolkit-pro/
 单文件 HTML，无构建步骤，可直接拖到 Vercel / Netlify / Cloudflare Pages / S3。
 
 结构：
-1. **Hero** — "Run your own Polymarket trading desk. Open-source engine, paid playbook."
+1. **Hero** — "Hedge your exposure on Polymarket. Open-source engine, paid toolkit."
 2. **Demo GIF** — Dashboard 截图（占位）
-3. **3 卡片** — 跟单 / 对冲 / 回放 三大功能
-4. **Pricing** — $49 vs $129 对比表
+3. **6 卡片** — 跟单 / 对冲 / BTC 5m / Dashboard / Replay / Notifier 六大功能
+4. **Pricing** — 单一 $99 套餐（All-In）
 5. **Trust signals** — "45+ tests, 100+ commits, 17 bugs we've already fixed"
 6. **FAQ** — 7 个高频问题（含"能赚钱吗？"的合规回答）
-7. **CTA** — "Get the Toolkit — $49" / "Go Pro — $129"
+7. **CTA** — "Buy the Toolkit — $99"（带 FIRST48 20% off 折扣码）
 
 设计原则：和现有 dashboard 同款暗色主题，monospace + accent 颜色 = 统一品牌。
 

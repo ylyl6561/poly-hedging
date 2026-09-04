@@ -217,36 +217,38 @@ python replay_candidate_journal.py # offline replay
 
 ---
 
-## 💼 Premium add-ons
+## 💼 Get the Toolkit
 
-The open-source core above is self-contained. For the **paid Pro
-playbook** (hedging calculator UI, PnL attribution, config presets,
-1-on-1 onboarding, 6-week exclusive updates) → see
-[`commercial/plan.md`](commercial/plan.md).
+The open-source core above is self-contained and free to use. For the **paid
+toolkit** (production config presets, hedging calculator UI, PnL-attribution
+replay, 1-hour onboarding call, 6-week exclusive updates, white-label rights,
+12 months Discord support) — one tier, one price:
 
-| | **Solo Trader — $49** | **Pro Quant — $129** |
-|---|---|---|
-| All open-source code | ✅ | ✅ |
-| 3 production config templates | ✅ | ✅ |
-| Local deploy scripts | ✅ | ✅ |
-| Hedging calculator UI | — | ✅ |
-| PnL attribution replay | — | ✅ |
-| Feishu / Telegram templates | — | ✅ |
-| 1-hour onboarding call | — | ✅ |
-| 6-week exclusive updates | — | ✅ |
-| Discord `@solo` (6 mo) | ✅ | ✅ |
-| Discord `@pro` (12 mo) | — | ✅ |
-| White-label rights | — | ✅ (apply) |
+### Polymarket Trader Toolkit — **$99** (one-time)
 
-**→ [Buy on Gumroad](https://yournamespace.gumroad.com/l/polymarket-toolkit)**
-USDC on Polygon also accepted — see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
+Includes:
+- All open-source code (BSL 1.1)
+- 3 production config templates (BTC 5m FastLoop, smart-money copy trader, dual-wallet hedge)
+- Hedging calculator UI
+- PnL-attribution replay
+- Feishu / Discord / Telegram notifier templates
+- 1-hour onboarding call (Zoom)
+- 6 weeks of exclusive strategy updates
+- 12 months Discord support
+- White-label rights (apply)
+- Lifetime updates
+
+**→ [Buy on Gumroad — $99](https://liangyu5.gumroad.com/l/polymarket-toolkit)**
+
+Use code `FIRST48` for 20% off in the first 48 hours. USDC on Polygon also
+accepted — see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
 
 ---
 
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Bug fixes are welcome as PRs.
-New strategies belong in the Pro tier.
+New strategies belong in the paid toolkit.
 
 ---
 
@@ -258,7 +260,7 @@ You may use, modify, and self-host this software for personal or
 internal business use. You may **not** resell or sublicense it. After
 4 years, each release automatically converts to Apache 2.0.
 
-For commercial redistribution rights, see the **Pro Quant** tier.
+For commercial redistribution rights, see the **$99 toolkit** tier.
 
 ---
 

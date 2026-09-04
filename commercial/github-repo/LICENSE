@@ -1,7 +1,7 @@
 Business Source License 1.1
 
-Licensor:  [Your Name / Your Company]
-Licensed Work:  Polymarket Trader Toolkit v1.x
+Licensor:  Liang Yu (liangyu5)
+Licensed Work:  poly-hedging v1.x
 
 Change Date:  2030-01-01
 Change License:  Apache License 2.0
@@ -21,7 +21,7 @@ Additional Use Grant:
 
   4. For redistribution rights (including selling templates, hosting
      services, or white-labeling), a separate commercial license is
-     required — see the Pro Quant tier at the project's homepage.
+     required — see the toolkit homepage for details.
 
 For full terms, see: https://mariadb.com/bsl11/
 
@@ -37,9 +37,9 @@ NOTICE (Plain-language summary):
 
 ❌ You CANNOT: fork this repo and sell it as your own product.
 
-❌ You CANNOT: host it as a paid SaaS without the Pro tier license.
+❌ You CANNOT: host it as a paid SaaS without a separate commercial license.
 
 📅 After January 1, 2030, each release automatically becomes Apache 2.0
    and these restrictions expire.
 
-For commercial licensing: yourname@example.com
+For commercial licensing: liangyu5@example.com

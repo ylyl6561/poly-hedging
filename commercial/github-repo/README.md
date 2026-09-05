@@ -108,32 +108,37 @@ What "hedging" means here:
 
 ## 📦 Module layout
 
-| Module | Role |
-|---|---|
-| `fastloop_trader.py` | Strategy 1 entry point — BTC fast-loop |
-| `strategy/dual_wallet_event_strategy.py` | Strategy 3 entry point — event strategy |
-| `strategy/dual_wallet_executor.py` | CLOB / relayer execution adapter |
-| `strategy/dual_wallet_models.py` | Event + leg + result dataclasses |
-| `strategy/account_pool.py` | Multi-wallet registry / rotation |
-| `accounts/` | Wallet contexts, signing keys, per-account state |
-| `market/` | Polymarket order book + microstructure utilities |
-| `core/` | Config resolution + shared helpers |
-| `state/` | Structured run logs + candidate journals |
-| `scheduler/`, `main/` | Loop driver + cron-free heartbeat scheduling |
-| `notifications/` | Feishu / Telegram / stdout notifiers |
-| `smart_money/` | Top-user scraping + copy-trade fan-out |
-| `trading/`, `api/` | CLOB SDK wrapper, Gamma + Data API client |
-| `runs/`, `logs/` | Per-cycle run output and trade journals |
-| `scripts/` | Replay, backfill, ops scripts |
-| `tests/` | Replay tests + dry-run regressions |
+| Module | Tier | Role |
+|---|---|---|
+| `core/` | Free | Config resolution + shared helpers |
+| `market/` | Free | CLOB order book / microstructure base |
+| `fastloop_trader.py` | Free | BTC 5-min dry-run entry point |
+| `strategy/` (base framework) | Free | Strategy base classes only — full implementations live in Pro |
+| `trading/`, `api/` | Free | CLOB SDK wrapper, Gamma + Data API client |
+| `notifications/` | Free | Notifier interface — production templates are in Pro |
+| `scripts/`, `tests/` | Free | Replay, backfill, ops, dry-run regressions |
+| `accounts/` | **Pro** | Wallet contexts, signing keys, multi-wallet pool |
+| `strategy/` (full impls) | **Pro** | Dual-wallet event strategy, path-score, executor, models |
+| `smart_money/` | **Pro** | Top-user scraping + copy-trade fan-out |
+| `scheduler/`, `main/` | **Pro** | Loop driver + cron-free heartbeat scheduling |
+| `templates/` | **Pro** | 3 production config templates (BTC 5m FastLoop, smart-money copy, dual-wallet hedge) |
+| `ui/hedging_calculator/` | **Pro** | Hedging calculator web UI |
+| `replay/pnl_attribution/` | **Pro** | PnL-attribution replay tool |
+| `notifiers/templates/` | **Pro** | Feishu / Discord / Telegram production notifier templates |
+
+The Pro modules live in the private **`poly-hedging-pro`** repo. Free repo
+holds the public framework; Pro repo holds the production wiring.
 
 ---
 
 ## 🚀 Quick Start
 
+After your **GitHub invite to `poly-hedging-pro` lands** (sent to your
+purchase email within 24 hours of payment), clone the Pro repo:
+
 ```bash
-git clone https://github.com/ylyl6561/poly-hedging.git
-cd poly-hedging
+git clone https://github.com/ylyl6561/poly-hedging-pro.git
+cd poly-hedging-pro
 
 python3 -m venv .venv
 . .venv/bin/activate
@@ -150,6 +155,10 @@ python replay_candidate_journal.py path/to/candidates.jsonl
 ```
 
 The runner writes logs and replay output under `runs/`.
+
+> Want to read the public framework only (no Pro code)?
+> Clone [`poly-hedging`](https://github.com/ylyl6561/poly-hedging) instead —
+> it's the open-core.
 
 ---
 
@@ -219,33 +228,50 @@ python replay_candidate_journal.py # offline replay
 
 ## 💼 Get the Toolkit
 
-The open-source core above is self-contained and free to use. For the **paid
-toolkit** (production config presets, hedging calculator UI, PnL-attribution
-replay, 1-hour onboarding call, 6-week exclusive updates, white-label rights,
-12 months Discord support) — one tier, one price:
+The **open-source core** (this repo) is free to read, fork, and run for
+personal/internal use under BSL 1.1. Production trading — the configs, the
+multi-wallet executor, the hedging UI, the PnL-attribution replay, and the
+onboarding — lives in the private **`poly-hedging-pro`** repo. To get
+access:
 
 ### Polymarket Trader Toolkit — **$99** (one-time)
 
-Includes:
-- All open-source code (BSL 1.1)
-- 3 production config templates (BTC 5m FastLoop, smart-money copy trader, dual-wallet hedge)
-- Hedging calculator UI
-- PnL-attribution replay
-- Feishu / Discord / Telegram notifier templates
-- 1-hour onboarding call (Zoom)
-- 6 weeks of exclusive strategy updates
-- 12 months Discord support
-- White-label rights (apply)
-- Lifetime updates
-
 **→ [Buy on Creem — $99](https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB)**
 
-🎁 **First 20 buyers get a free 30-minute 1-on-1 onboarding call** — walk
-through your setup live, ask anything, hedge anything you got wrong. Claimed
-in order of purchase; your license email includes the scheduling link.
+🎁 **First 20 buyers get a free 30-minute 1-on-1 onboarding call** —
+walk through your setup live, ask anything, hedge anything you got wrong.
+Claimed in order of purchase; your license email includes the scheduling link.
+
+**Delivery:** after payment, you'll be redirected back to this README
+(public repo). Within 24 hours, you'll receive a **GitHub invitation
+to `poly-hedging-pro`** at the email used for payment. Accept the invite
+and clone with your GitHub account — that's it.
 
 USDC on Polygon also accepted —
 see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
+
+### Free vs Pro
+
+| | Free (this repo) | Pro ($99, `poly-hedging-pro`) |
+|---|---|---|
+| Read the source code | ✅ | ✅ |
+| Run BTC fast-loop dry-run | ✅ | ✅ |
+| Production config templates (3) | — | ✅ |
+| Multi-wallet `accounts/` pool | — | ✅ |
+| Dual-wallet event strategy (full impl) | — | ✅ |
+| Hedging calculator UI | — | ✅ |
+| PnL-attribution replay | — | ✅ |
+| Feishu / Discord / Telegram notifier templates | — | ✅ |
+| Live `--live` trading configs | — | ✅ |
+| 1-hour onboarding call (first 20 buyers: 30-min) | — | ✅ |
+| 6 weeks of exclusive strategy updates | — | ✅ |
+| 12 months Discord support | — | ✅ |
+| White-label rights | — | ✅ (apply) |
+| Lifetime updates | — | ✅ |
+
+The Pro repo is a **drop-in replacement** for this one — same folder
+structure, same `python fastloop_trader.py` entry point. Pro just adds
+the wiring, configs, and UI on top.
 
 ---
 

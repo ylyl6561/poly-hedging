@@ -17,7 +17,7 @@ buyer pays $99 on Creem
         ├── (auto) Creem emails buyer: thank-you + Discord invite
         │
         └── (auto) Creem redirects browser to:
-             https://github.com/ylyl6561/poly-hedging#-get-the-toolkit
+             <your-toolkit-repo-url>#-get-the-toolkit
                                   │
                                   ▼
               README "Get the Toolkit" section tells them:
@@ -109,7 +109,7 @@ to the buy button.
 ```text
 1. (Automatic, Creem) buyer receives Thank-you email with Discord invite link
 2. (Automatic, Creem) buyer lands on
-   https://github.com/ylyl6561/poly-hedging#-get-the-toolkit
+   `<your-toolkit-repo-url>#-get-the-toolkit`
 3. (Automatic, founder-side) sale-notification email lands at
    liangyu6561@gmail.com (configured in Creem Settings → Notifications)
 4. (Manual, founder) send onboarding-call Cal link if order #1–20
@@ -123,7 +123,7 @@ no runtime check**. Buyer self-serves.
 ## ⚠️ Don't forget before going live
 
 - [ ] Creem product page configured (you've done this)
-- [ ] Creem **Success URL** = `https://github.com/ylyl6561/poly-hedging#-get-the-toolkit`
+- [ ] Creem **Success URL** = `<your-toolkit-repo-url>#-get-the-toolkit`
 - [ ] Creem **Thank-you email** template replaced with the version
       that doesn't mention a GitHub invite or license key
 - [ ] Discord invite URL pasted in the Thank-you email

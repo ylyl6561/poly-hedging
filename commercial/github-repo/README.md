@@ -136,7 +136,7 @@ What "hedging" means here:
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/ylyl6561/poly-hedging.git
+git clone <your-toolkit-repo-url>
 cd poly-hedging
 
 python3 -m venv .venv
@@ -236,11 +236,11 @@ no software gate; everything you need is already on `main`.
 > ### ⇢ What happens after you pay
 >
 > 1. **Creem redirects your browser** to
->    [`github.com/ylyl6561/poly-hedging`](#-quick-start) — this README.
+>    [`<your-toolkit-repo-url>#-quick-start`](#-quick-start) — this README.
 > 2. **Creem emails you** the Thank-you + Discord invite.
 > 3. **You clone and run:**
 >    ```bash
->    git clone https://github.com/ylyl6561/poly-hedging.git
+>    git clone <your-toolkit-repo-url>
 >    cd poly-hedging && pip install -r requirements.txt
 >    python fastloop_trader.py --dry-run   # works immediately
 >    python fastloop_trader.py --live      # BSL 1.1 allows production use

@@ -20,7 +20,7 @@ If you're unsure, open a Discussion first.
 ## Development setup
 
 ```bash
-git clone https://github.com/ylyl6561/poly-hedging.git
+git clone <your-toolkit-repo-url>
 cd poly-hedging
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt

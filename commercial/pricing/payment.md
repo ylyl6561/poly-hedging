@@ -39,8 +39,11 @@ Go to https://www.creem.io → Sign in → Products → **Create Product**
   section and sends a Thank-you email with the Discord invite.
   **No second repo, no zip, no GitHub invite, no license key.**
   Buyer self-serves — everything they need is already on `main`.
-- **Post-purchase success URL:** `https://github.com/ylyl6561/poly-hedging#-get-the-toolkit`
+- **Post-purchase success URL:** `<your-toolkit-repo-url>#-get-the-toolkit`
   — buyer lands back on the public README's "Get the Toolkit" section.
+  (Replace `<your-toolkit-repo-url>` with the actual repo URL — set this
+  value in **Creem dashboard only**, do NOT paste the URL into the
+  landing page or any other public surface.)
 - Tags: `polymarket`, `trading`, `toolkit`, `python`, `hedging`
 - **Bonus (first 20 buyers):** Free 30-min 1-on-1 onboarding call (Zoom).
   Send the first 20 buyers a separate email with your Cal.com /
@@ -68,16 +71,16 @@ Creem → Product → "Thank you email" → paste:
 ```
 Thanks for buying the Polymarket Trader Toolkit!
 
-Everything is already on GitHub — clone and run:
+Everything is already on the toolkit repo — clone and run:
 
-  git clone https://github.com/ylyl6561/poly-hedging.git
+  git clone <your-toolkit-repo-url>
   cd poly-hedging
   pip install -r requirements.txt
   python fastloop_trader.py --dry-run   # dry-run works immediately
   python fastloop_trader.py --live      # BSL 1.1 allows production use for buyers
 
 Discord invite: https://discord.gg/YOUR_DISCORD_LINK
-Full docs: https://github.com/ylyl6561/poly-hedging#-get-the-toolkit
+Full docs: <your-toolkit-repo-url>#-get-the-toolkit
 
 If you qualify (first 20 buyers), I'll email you separately with
 onboarding-call scheduling.
@@ -90,6 +93,12 @@ Questions? Reply to this email or ping us in Discord.
 > **do NOT** mention the first-20 onboarding call bonus in this
 > auto email (would mislead buyers 21+). Send the bonus reply
 > manually. See `commercial/admin/launch-sop.md` for the templates.
+
+> **Placeholder substitution:** when pasting this template into Creem,
+> replace `<your-toolkit-repo-url>` (both occurrences) with the actual
+> repo URL. Keep the URL **out of** the public landing page,
+> README, and any other user-facing surface — it lives only inside
+> the Creem dashboard and this Thank-you email.
 
 ### Route sales notifications to your inbox
 
@@ -189,7 +198,7 @@ After payment, they receive:
 
 1. (Auto) Creem Thank-you email: clone instructions + Discord invite
 2. (Auto) Creem redirect: browser lands on
-   github.com/ylyl6561/poly-hedging#-get-the-toolkit
+   `<your-toolkit-repo-url>#-get-the-toolkit`
 3. (Manual, founder) Onboarding call Cal.com link (buyers 1-20 only)
 ```
 

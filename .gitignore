@@ -10,6 +10,9 @@ __pycache__/
 .venv_*/
 venv/
 
+# Founder-only runbooks (contain admin email, Cal links, license keys)
+commercial/admin/
+
 runs/
 fastloop_*_20*/
 observe_*.log

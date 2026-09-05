@@ -65,6 +65,26 @@ Install guide: [YOUR_LANDING_PAGE]/docs/getting-started.md
 Questions? Reply to this email or ping us in Discord.
 ```
 
+### Route sales notifications to your inbox
+
+Creem → **Settings → Notifications** → turn on **"New sale"** → set
+notification email to **liangyu6561@gmail.com**. Now every paid order sends
+you an email summary with: buyer email, license key, amount, timestamp.
+
+**You use this to track the first-20 onboarding-call bonus.** See
+[`commercial/admin/launch-sop.md`](../admin/launch-sop.md) for the full
+operational runbook.
+
+### First-20 bonus — two emails, not one
+
+Creem's "Thank you email" goes to *every* buyer and shouldn't mention the
+onboarding call (would mislead buyers 21+). Instead:
+
+1. Creem → Products → Polymarket Toolkit → **Manual emails** → keep buyer
+   emails as a list. When a new sale arrives in your inbox, check the count.
+2. **If sale #1–20:** reply to that buyer manually with the Cal.com link.
+3. **If sale #21+:** do nothing. They're out of the bonus pool.
+
 ---
 
 ## Lemon Squeezy Setup

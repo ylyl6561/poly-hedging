@@ -156,13 +156,14 @@ polymarket-trader-toolkit-pro/
 
 | 平台 | 用法 | 优势 | 劣势 |
 |---|---|---|---|
-| **Gumroad** | 主推，含税 / VAT 自动处理 | 一行 embed code、内置 license key | 抽 10% |
-| **Lemon Squeezy** | 备选（更便宜的 MoR） | 税务 + 合规更友好 | UI 老旧 |
-| **USDC on Polygon** | 加分项，crypto 原生用户 | 0 抽成、匿名、24/7 | 需自己生成 license key + 验证 webhook |
+| **Creem** | **主推**，含税 / VAT 自动处理 + 支付宝 + USDC 双通道 | 抽成最低 3.9% + $0.40、内置 license key、大陆个人可用 | 平台较新、生态不如 Stripe |
+| **Lemon Squeezy** | 备选（EU MoR） | 税务 + 合规更友好 | UI 老旧、抽 5%+ |
+| **USDC on Polygon** | 加分项，crypto 原生用户 | 0 抽成（自托管）、匿名、24/7 | 需自己生成 license key + 验证 webhook |
+| ~~Gumroad~~ | 已弃用 | — | 大陆个人无 Stripe / PayPal，无法 payout |
 
-**交付内容**（Gumroad 形式）：
+**交付内容**（Creem 形式）：
 - 单文件 `.zip` 含所有文档 + 模板 + 脚本
-- 含 `LICENSE.txt` 含个人 license key（HMAC-SHA256 签名）
+- 含 `LICENSE.txt` 含个人 license key（HMAC-SHA256 签名，Creem 自动生成）
 - Discord 邀请链接（不同频道 = 不同 role）
 - 安装指南 + FAQ PDF
 
@@ -216,7 +217,7 @@ def verify(key, secret="YOUR_HMAC_SECRET"):
 ## 9. 立即可做的下一步（按优先级）
 
 1. ✅ **本周**：把 `poly-hedging` 核心代码 push 到 GitHub 公开仓库 `polymarket-trader-toolkit`，加 LICENSE + README
-2. ✅ **本周**：Gumroad 创建产品页面（draft 状态），写 sales copy
+2. ✅ **本周**：Creem 创建产品页面（draft 状态），写 sales copy
 3. ✅ **本周**：landing page 部署到 `polymarket-trader-toolkit.com`（Cloudflare Pages，免费）
 4. ✅ **下周**：Reddit 软启动（不发广告，用工具本身的教程帖）
 5. ✅ **第 3 周**：Show HN 上线
@@ -228,7 +229,7 @@ def verify(key, secret="YOUR_HMAC_SECRET"):
 
 - GitHub stars: 100+
 - Landing page 访客: 500+
-- Gumroad 转化率: 3%+
+- Creem 转化率: 3%+
 - 付费用户: 15+ (W4)
 - Discord 活跃: 30+
 

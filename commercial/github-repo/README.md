@@ -126,9 +126,10 @@ What "hedging" means here:
 | `replay/pnl_attribution/` | Free | PnL-attribution replay tool |
 | `notifiers/templates/` | Free | Feishu / Discord / Telegram production notifier templates |
 
-> All modules are public on `main`. The Pro tier doesn't gate by repo
-> access — it gates by **license key** at runtime. See "Get the
-> Toolkit" below. Dry-run paths stay free forever.
+> Everything is on `main` under BSL 1.1. There is no separate "Pro" repo,
+> no license key, no runtime gate. The $99 covers the **service tier**
+> (onboarding call + Discord + updates); the code itself is freely
+> readable. See "Get the Toolkit" below.
 
 ---
 
@@ -142,7 +143,7 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 
-# try the BTC fast-loop in dry-run mode (no real money, no license needed)
+# try the BTC fast-loop in dry-run mode (no real money)
 python fastloop_trader.py
 
 # 15-minute paper observation
@@ -152,10 +153,8 @@ python fastloop_trader.py
 python replay_candidate_journal.py path/to/candidates.jsonl
 ```
 
-The runner writes logs and replay output under `runs/`.
-
-For **production (real-money) mode**, you'll need a Pro license key
-from the "Get the Toolkit" section below.
+The runner writes logs and replay output under `runs/`. Nothing needs
+to be activated or registered.
 
 ---
 
@@ -225,57 +224,48 @@ python replay_candidate_journal.py # offline replay
 
 ## 💼 Get the Toolkit
 
-The **open-source core** (this repo) is free to read, fork, and run for
-personal/internal use under BSL 1.1. Production trading — live `--live`
-mode for the multi-wallet executor, the smart-money copy trader, and the
-scheduled hedge loop — is gated by a license key. To unlock Pro mode:
+The **codebase** (this repo) is free to read, fork, and run under
+BSL 1.1. The $99 tier covers the **service** on top — onboarding
+call, Discord support, strategy updates, white-label rights. There is
+no software gate; everything you need is already on `main`.
 
 ### Polymarket Trader Toolkit — **$99** (one-time)
 
 **→ [Buy on Creem — $99](https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB)**
 
 🎁 **First 20 buyers get a free 30-minute 1-on-1 onboarding call** —
-walk through your setup live, ask anything, hedge anything you got wrong.
-Claimed in order of purchase; your license email includes the scheduling link.
+walk through your setup live, ask anything, hedge anything you got
+wrong. Claimed in order of purchase; you receive the Cal.com link in
+a separate email (not auto-generated, to avoid misleading buyers
+#21+).
 
-**Delivery:** after payment, you'll be redirected back to this README
-(public repo) **and** receive an email with your unique **license key**.
-Activate the Pro tier in 30 seconds:
+**Delivery:** after payment you'll be redirected back to this README
+and receive a Thank-you email with:
+- The clone + run instructions below
+- The Discord invite link
 
-```bash
-git clone https://github.com/ylyl6561/poly-hedging.git
-cd poly-hedging
-echo "POLY_PRO_LICENSE_KEY=YOUR_KEY_HERE" >> .env
-python fastloop_trader.py --live      # Pro unlocked
-```
+There is nothing to activate. The repo you already see is the
+product. BSL 1.1 legally protects it (you can use it for personal
+and internal business use, but you cannot rebrand and resell it as
+a competing product — see `LICENSE`).
 
 USDC on Polygon also accepted —
 see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
 
-### Free vs Pro
+### What $99 buys (and what it doesn't)
 
-| | Free (this repo) | Pro ($99, license-key gated) |
-|---|---|---|
-| Read the source code | ✅ | ✅ |
-| Run BTC fast-loop dry-run | ✅ | ✅ |
-| Use the hedging calculator UI | ✅ | ✅ |
-| PnL-attribution replay | ✅ | ✅ |
-| Production config templates (3) | ✅ (read + dry-run) | ✅ (production `--live`) |
-| Multi-wallet `accounts/` pool | ✅ (read) | ✅ (signs real orders) |
-| Dual-wallet event strategy (full impl) | ✅ (read) | ✅ (production `--live`) |
-| Smart-money copy trader | ✅ (dry-run) | ✅ (production `--live`) |
-| Live `--live` trading configs | — | ✅ |
-| Feishu / Discord / Telegram notifier templates | ✅ (read) | ✅ (live send) |
-| 1-hour onboarding call (first 20 buyers: 30-min) | — | ✅ |
-| 6 weeks of exclusive strategy updates | — | ✅ |
-| 12 months Discord support | — | ✅ |
-| White-label rights | — | ✅ (apply) |
-| Lifetime updates | — | ✅ |
+| | What you get |
+|---|---|
+| Read all 124 Python files on `main` | ✅ (free, no purchase needed) |
+| Run dry-run / replay / hedging calculator | ✅ (free, no purchase needed) |
+| 1-on-1 onboarding call (60 min, Zoom or 飞书会议) | ✅ ($99 tier) |
+| 12 months of Discord support | ✅ ($99 tier) |
+| 6 weeks of exclusive strategy updates | ✅ ($99 tier) |
+| White-label rights | ✅ (apply, $99 tier) |
+| Lifetime updates to the public repo | ✅ ($99 tier) |
 
-Pro mode unlocks with `POLY_PRO_LICENSE_KEY` in `.env`. Without it,
-`--live` exits with a clear message pointing back to this section.
-Dry-run, replay, the calculator, and source-code reading all keep
-working for free.
+BSL 1.1 protects the codebase. Your $99 buys **the founder's time
+and attention**, not a feature lock.
 
 ---
 

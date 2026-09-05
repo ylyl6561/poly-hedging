@@ -276,14 +276,14 @@
 </section>
 
 <div class="code-preview container">
-<span class="comment"># 30 seconds to first dry-run — no license needed</span>
+<span class="comment"># 30 seconds to first dry-run — no license, no signup</span>
 <span class="cmd">$</span> git clone https://github.com/ylyl6561/poly-hedging.git
 <span class="cmd">$</span> cd poly-hedging && ./scripts/install.sh
 <span class="cmd">$</span> cp templates/balanced_smart_money.json config.json
 <span class="cmd">$</span> ./scripts/replay.sh config.json --days 30
 <span class="out">[replay] 412 fills | 67% win | +$842 PnL (paper)</span>
 <span class="cmd">$</span> ./scripts/deploy.sh config.json --dry-run
-<span class="comment"># → go live: add POLY_PRO_LICENSE_KEY=... to .env and re-run without --dry-run</span>
+<span class="comment"># BSL 1.1 license lets paying buyers run --live directly.</span>
 </div>
 
 <section id="features">

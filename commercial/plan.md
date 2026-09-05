@@ -146,7 +146,7 @@ polymarket-trader-toolkit-pro/
 4. **Pricing** — 单一 $99 套餐（All-In）
 5. **Trust signals** — "45+ tests, 100+ commits, 17 bugs we've already fixed"
 6. **FAQ** — 7 个高频问题（含"能赚钱吗？"的合规回答）
-7. **CTA** — "Buy the Toolkit — $99"（带 FIRST48 20% off 折扣码）
+7. **CTA** — "Buy the Toolkit — $99"（无折扣，单一定价）
 
 设计原则：和现有 dashboard 同款暗色主题，monospace + accent 颜色 = 统一品牌。
 

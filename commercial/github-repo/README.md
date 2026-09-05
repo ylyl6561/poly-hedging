@@ -240,8 +240,8 @@ Includes:
 
 **→ [Buy on Creem — $99](https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB)**
 
-Use code `FIRST48` for 20% off in the first 48 hours. USDC on Polygon also
-accepted — see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
+USDC on Polygon also accepted —
+see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
 
 ---
 

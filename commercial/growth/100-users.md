@@ -36,7 +36,7 @@ posts about trading infrastructure, not about Polymarket itself. Be useful.
 
 ### Week 2: Soft launch
 
-**Monday:** Tweet 5 (launch day). Add `FIRST48` discount code for 20% off.
+**Monday:** Tweet 5 (launch day).
 
 **Tuesday-Thursday:** Reply to every person who quote-tweets or replies. Even "thanks"
 increases algorithm reach. If someone asks a technical question, answer in detail — this is
@@ -177,7 +177,7 @@ HN's filter favors. It doesn't use marketing speak.
 | W1 | r/polymarket | Replay tool post | 500 views | 2-3 |
 | W2 | HackerNews | Show HN | 20k views | 10-15 |
 | W2 | GitHub trending | Stars + mentions | 2k views | 3-5 |
-| W2 | Twitter | Thread + discount | 5k impressions | 5-10 |
+| W2 | Twitter | Thread + amp CTA | 5k impressions | 5-10 |
 | W3 | r/quant | Technical post | 800 views | 2-3 |
 | W3 | Twitter DM | Follow-up engaged users | 30 DMs | 3-5 |
 | W3-4 | Organic | Word of mouth | — | 5-10 |

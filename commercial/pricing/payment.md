@@ -37,7 +37,6 @@ Go to https://www.creem.io → Sign in → Products → **Create Product**
 - License keys: enabled → generate automatically
 - Post-purchase: redirect to landing page success URL; license key auto-emailed
 - Tags: `polymarket`, `trading`, `toolkit`, `python`, `hedging`
-- Discount code: `FIRST48` (20% off, valid for 48 hours after launch)
 
 ### Live URL
 

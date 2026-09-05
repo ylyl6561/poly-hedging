@@ -8,7 +8,7 @@
 - Each tweet: post, then reply to it 2x in the next hour to boost algorithm reach
 - Use a tool like `twikit.com` or `charm.sh` for quick quote-tweet variants
 
-**Pricing to mention everywhere:** **$99 one-time** (use code `FIRST48` for 20% off in launch window).
+**Pricing to mention everywhere:** **$99 one-time**. No discount, no upsells — clean single-tier pricing keeps the funnel simple and the messaging honest.
 
 ---
 
@@ -81,7 +81,7 @@
 >
 > Built because we lost money first. Tested because we run it ourselves.
 >
-> $99 one-time. Use FIRST48 for 20% off.
+> $99 one-time. No subscription, no add-ons.
 >
 > GitHub: [GITHUB_LINK]
 > Landing: [TOOLKIT_LINK]

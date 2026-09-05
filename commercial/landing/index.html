@@ -89,6 +89,24 @@
   .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
   .hero-cta .btn { padding: 14px 26px; font-size: 15px; }
 
+  .hero-postpay {
+    margin: 18px auto 0;
+    max-width: 720px;
+    padding: 12px 18px;
+    background: linear-gradient(135deg, rgba(0,212,170,0.10), rgba(0,212,170,0.04));
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text);
+    display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
+  }
+  .hero-postpay .arrow-icon { color: var(--accent); font-weight: 700; font-size: 18px; }
+  .hero-postpay .repo-link {
+    color: var(--accent); text-decoration: none; font-weight: 600;
+    border-bottom: 1px dashed var(--accent);
+  }
+  .hero-postpay .repo-link:hover { color: var(--accent-2); }
+
   .hero-stats {
     display: flex; gap: 40px; justify-content: center; margin-top: 56px;
     flex-wrap: wrap;
@@ -167,6 +185,75 @@
   }
   .features-list li.no::before { content: '–'; color: var(--muted); }
   .features-list li.no { color: var(--muted); }
+
+  /* Post-payment flow inside the pricing card */
+  .postpay-flow {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 8px 0 20px;
+  }
+  .postpay-title {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .postpay-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .postpay-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    background: var(--bg-2);
+    border-radius: 6px;
+    flex: 1 1 90px;
+    min-width: 80px;
+    text-align: center;
+  }
+  .postpay-step.highlight {
+    background: rgba(0,212,170,0.10);
+    border: 1px solid var(--accent);
+  }
+  .postpay-step .step-num {
+    position: absolute; /* hidden visually but kept for a11y */
+    width: 1px; height: 1px; padding: 0; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .postpay-step .step-icon { font-size: 22px; line-height: 1; }
+  .postpay-step .step-label { font-size: 12px; color: var(--text); font-weight: 500; }
+  .postpay-step.highlight .step-label { color: var(--accent); font-weight: 600; }
+  .postpay-steps .step-arrow {
+    color: var(--muted); font-size: 16px; font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .postpay-repo {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .postpay-repo a {
+    color: var(--accent); text-decoration: none; font-weight: 600;
+    border-bottom: 1px dashed var(--accent);
+  }
+  .postpay-repo a:hover { color: var(--accent-2); }
+  @media (max-width: 480px) {
+    .postpay-steps { flex-direction: column; }
+    .postpay-steps .step-arrow { transform: rotate(90deg); }
+    .postpay-step { width: 100%; }
+  }
 
   /* Trust */
   .trust {
@@ -267,6 +354,13 @@
     <a href="#pricing" class="btn">Get the Toolkit — $99</a>
   </div>
 
+  <div class="hero-postpay">
+    <span class="arrow-icon">⇢</span>
+    After payment you'll be <strong>auto-redirected to the GitHub repo</strong>:
+    <a href="https://github.com/ylyl6561/poly-hedging" target="_blank" rel="noopener" class="repo-link">github.com/ylyl6561/poly-hedging</a>
+    — clone &amp; run, that's it.
+  </div>
+
   <div class="hero-stats">
     <div class="stat"><div class="stat-num">3</div><div class="stat-label">strategies bundled</div></div>
     <div class="stat"><div class="stat-num">45+</div><div class="stat-label">tests passing</div></div>
@@ -350,6 +444,34 @@
           <li>Discord access (12 months)</li>
           <li>White-label rights (apply)</li>
         </ul>
+
+        <div class="postpay-flow">
+          <div class="postpay-title">⇢ What happens after you pay</div>
+          <div class="postpay-steps">
+            <div class="postpay-step">
+              <span class="step-num">1</span>
+              <span class="step-icon">💳</span>
+              <span class="step-label">Pay $99</span>
+            </div>
+            <span class="step-arrow">→</span>
+            <div class="postpay-step highlight">
+              <span class="step-num">2</span>
+              <span class="step-icon">🔀</span>
+              <span class="step-label">Auto-redirect</span>
+            </div>
+            <span class="step-arrow">→</span>
+            <div class="postpay-step">
+              <span class="step-num">3</span>
+              <span class="step-icon">⚡</span>
+              <span class="step-label">Clone &amp; run</span>
+            </div>
+          </div>
+          <div class="postpay-repo">
+            → you'll land on
+            <a href="https://github.com/ylyl6561/poly-hedging" target="_blank" rel="noopener"><strong>github.com/ylyl6561/poly-hedging</strong></a>
+          </div>
+        </div>
+
         <a href="https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB" target="_blank" rel="noopener" class="btn" style="width:100%;text-align:center;display:block;">
           Buy the Toolkit — $99
         </a>

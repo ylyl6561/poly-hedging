@@ -233,16 +233,27 @@ no software gate; everything you need is already on `main`.
 
 **→ [Buy on Creem — $99](https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB)**
 
+> ### ⇢ What happens after you pay
+>
+> 1. **Creem redirects your browser** to
+>    [`github.com/ylyl6561/poly-hedging`](#-quick-start) — this README.
+> 2. **Creem emails you** the Thank-you + Discord invite.
+> 3. **You clone and run:**
+>    ```bash
+>    git clone https://github.com/ylyl6561/poly-hedging.git
+>    cd poly-hedging && pip install -r requirements.txt
+>    python fastloop_trader.py --dry-run   # works immediately
+>    python fastloop_trader.py --live      # BSL 1.1 allows production use
+>    ```
+>
+> Nothing to activate, no second repo, no license key. The repo you
+> already see **is** the product.
+
 🎁 **First 20 buyers get a free 30-minute 1-on-1 onboarding call** —
 walk through your setup live, ask anything, hedge anything you got
 wrong. Claimed in order of purchase; you receive the Cal.com link in
 a separate email (not auto-generated, to avoid misleading buyers
 #21+).
-
-**Delivery:** after payment you'll be redirected back to this README
-and receive a Thank-you email with:
-- The clone + run instructions below
-- The Discord invite link
 
 There is nothing to activate. The repo you already see is the
 product. BSL 1.1 legally protects it (you can use it for personal

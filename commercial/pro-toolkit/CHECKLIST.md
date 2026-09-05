@@ -1,121 +1,232 @@
-# Pro Repo — CHECKLIST
+# Pro Tier — Delivery & Activation Checklist
 
-This is the founder's checklist for what lives in the **private** `poly-hedging-pro`
-repo vs. the **public** `poly-hedging` repo. It's a planning doc, not source code.
+**Audience:** founder + Creem ops. This doc describes how the **single
+public `poly-hedging` repo** ships a **Pro tier** without a second private
+repo. (Earlier drafts planned a separate `poly-hedging-pro` private repo;
+that decision was reversed — see git history.)
 
 ---
 
-## One-time: create the private repo
+## Architecture (the new model)
 
-```bash
-gh repo create ylyl6561/poly-hedging-pro \
-  --private \
-  --description "Polymarket Trader Toolkit — paid tier (private)"
+```
+                                       ┌────────────────────────┐
+   buyer pays $99 on Creem             │ github.com/ylyl6561/   │
+            │                          │ poly-hedging (PUBLIC)  │
+            ▼                          │ main = everything      │
+  ┌─────────────────────┐              └────────────────────────┘
+  │ Creem webhook fires │                        │
+  │  1. auto-emails     │                        │ buyer reads README
+  │     buyer the       │                        │ "Get the Toolkit"
+  │     LICENSE KEY     │                        ▼
+  │  2. redirects buyer │              ┌──────────────────────┐
+  │     to README       │─────────────▶│ Paste license key    │
+  └─────────────────────┘              │ into .env:           │
+                                       │ POLY_PRO_LICENSE_KEY │
+                                       │ = xxx-xxx-xxx.xxx    │
+                                       └──────────────────────┘
+                                                  │
+                                                  ▼
+                                       Runtime check in
+                                       accounts/, smart_money/,
+                                       scheduler/, etc.
+                                       unlocks Pro mode.
+```
+
+**Why BSL-legal**: BSL 1.1 is source-available. The source code is on
+GitHub for everyone to read. The **Additional Use Grant** restricts
+**production use** of the Pro modules without a paid license key. Dry-run
+and code reading are free for everyone, just like CockroachDB / Sentry
+BSL projects.
+
+---
+
+## What lives where (no repo split needed)
+
+The single `poly-hedging` repo's `main` branch contains **everything**.
+
+| Path | Default | Becomes Pro when |
+|---|---|---|
+| `core/`, `market/`, `api/`, `trading/` | Free | (always free) |
+| `fastloop_trader.py` | Free | `--live` mode gates on license |
+| `strategy/` (base framework + dual-wallet event impl) | Free | production executor gates on license |
+| `accounts/` | Free | real-wallet signing paths gate on license |
+| `smart_money/` | Free | scrape+fan-out production mode gates on license |
+| `scheduler/`, `main/` | Free | live-loop driver gates on license |
+| `state/` | Free | live run-state writes gate on license |
+| `notifications/` | Free | live-channel senders gate on license |
+| `templates/` | Free | 3 production configs ship with the repo; the **HMAC-encrypted live-mode flag** inside each config gates on license |
+| `ui/hedging_calculator/` | Free | the calculator works without license; only "Export to Pro config" requires license |
+| `replay/pnl_attribution/` | Free | replay works without license; live mode is already covered by `fastloop_trader.py --live` gate |
+| `notifiers/templates/` | Free | production notifier templates ship with the repo |
+| `tests/` | Free | all tests pass without license (license mock in conftest) |
+| `scripts/`, `requirements.txt`, `config.example.json` | Free | — |
+
+The free reader can browse everything, run any dry-run, replay any
+journal, use the calculator — they just can't put real money into the
+Pro paths. That's the BSL + license-key boundary.
+
+---
+
+## What gets shipped to the buyer
+
+```text
+1. (Automatic, Creem) buyer receives license-key email
+2. (Automatic, Creem) buyer lands on https://github.com/ylyl6561/poly-hedging#-get-the-toolkit
+3. (Automatic, optional) founder receives sale-notification email
+4. (Manual, founder) send onboarding-call Cal link if order #1–20
+```
+
+There is **no second repo, no zip, no GitHub invite**. Buyer self-serves.
+
+---
+
+## Creem product configuration (one-time)
+
+Go to https://www.creem.io → Sign in → Products → **Create Product**
+
+**Product: Polymarket Trader Toolkit — $99**
+- Price: $99 USD
+- Type: Digital product (one-time payment)
+- **Delivery model: License key + redirect.** Creem auto-generates a unique
+  license key per order and emails it to the buyer. No manual repo invite.
+- **Issue license keys:** ✅ Enabled (use Creem's built-in license-key
+  generator — these keys map to the buyer's order in the Creem dashboard).
+- **License-key activation mode:** buyer pastes the key into
+  `POLY_PRO_LICENSE_KEY=` in `.env` (see `commercial/pricing/payment.md`).
+- **Post-purchase success URL:**
+  `https://github.com/ylyl6561/poly-hedging#-get-the-toolkit`
+  — buyer lands back on the public README, sees the activation steps.
+- Tags: `polymarket`, `trading`, `toolkit`, `python`, `hedging`
+- **Bonus (first 20 buyers):** Free 30-min 1-on-1 onboarding call (Zoom).
+  Send the first 20 buyers a separate email with your Cal.com link
+  after each sale (see `commercial/admin/launch-sop.md`).
+
+### Live URL
+`https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB`
+
+---
+
+## Buyer activation flow (what they see on the README)
+
+After payment, buyer lands on the README's "Get the Toolkit" section and
+sees this:
+
+```text
+1. (Already in your inbox) Find the license-key email from Creem.
+2. Clone the public repo:
+       git clone https://github.com/ylyl6561/poly-hedging.git
+       cd poly-hedging
+3. Add the license key to .env:
+       echo "POLY_PRO_LICENSE_KEY=YOUR-KEY-HERE" >> .env
+4. (Optional) drop your wallet private key + RPC URLs into .env.
+5. Run any Pro module — it will verify the key locally and unlock:
+
+       # Examples (Pro paths that gate on the license):
+       python fastloop_trader.py --live                # BTC 5m FastLoop
+       python smart_money/run_copy_trader.py --live    # top-user mirror
+       python scheduler/run_dual_wallet_hedge.py --live
+
+   Without the key these commands exit with:
+       RuntimeError: POLY_PRO_LICENSE_KEY not set — see README "Get the Toolkit"
+
+Dry-run stays free — every entry point defaults to --dry-run.
 ```
 
 ---
 
-## What goes in the Pro repo (everything currently in the public repo's working tree)
+## License-key verification (how the gate works)
 
-The public `poly-hedging` repo stays as the open-core framework only.
-**Everything below — currently public — moves to Pro.**
+`tools/verify_license.py` — the same HMAC check the README points to:
 
-### Production strategy modules (must be Pro-only)
+```python
+# tools/verify_license.py
+import hmac, hashlib, os, sys
 
-| Path | Why Pro |
-|---|---|
-| `strategy/dual_wallet_event_strategy.py` | Full implementation, multi-wallet |
-| `strategy/dual_wallet_executor.py` | CLOB execution with relayer redeem |
-| `strategy/dual_wallet_models.py` | Event + leg + result dataclasses |
-| `strategy/account_pool.py` | Multi-wallet rotation, secrets |
-| `accounts/` | Wallet contexts, signing keys, per-account state |
-| `smart_money/` | Top-user scraping, copy-trade fan-out |
-| `scheduler/`, `main/` | Live loop driver |
-| `state/` | Live run state, candidate journals |
-| `notifications/` | Production notifiers |
+# Same secret used to mint keys (Creem embeds it in every key they emit).
+# Kept here as a fallback so tests / CI work without env var.
+LICENSE_SECRET = os.environ.get(
+    "POLY_LICENSE_SECRET",
+    "dev-secret-do-not-use-in-prod",
+)
 
-### Pro-only additions (don't exist yet, write them)
+def verify_license(license_key: str) -> bool:
+    """Verify a Creem-style license key: PREFIX-XXXX-XXXX.YYY"""
+    if "." not in license_key or "-" not in license_key:
+        return False
+    prefix, provided_hash = license_key.rsplit(".", 1)
+    expected = hmac.new(
+        LICENSE_SECRET.encode(), prefix.encode(), hashlib.sha256
+    ).hexdigest()[:32]
+    return hmac.compare_digest(expected, provided_hash)
 
-| Path | What it is |
-|---|---|
-| `templates/btc_5m_fastloop.json` | BTC 5-min FastLoop production config |
-| `templates/smart_money_copy.json` | Smart-money copy trader production config |
-| `templates/dual_wallet_hedge.json` | Dual-wallet hedge production config |
-| `ui/hedging_calculator/` | Hedging calculator web UI (Flask or Vite+React) |
-| `replay/pnl_attribution/` | PnL-attribution replay tool |
-| `notifiers/templates/feishu.json` | Feishu notifier template |
-| `notifiers/templates/discord.json` | Discord notifier template |
-| `notifiers/templates/telegram.json` | Telegram notifier template |
-
-### What stays in the **public** repo (free, open-core)
-
-| Path | Why free |
-|---|---|
-| `core/` | Pure config-resolution helpers, no secrets |
-| `market/` | CLOB order-book utilities, generic |
-| `trading/`, `api/` | CLOB SDK wrapper, read-mostly Data API client |
-| `scripts/run_fastloop_path_score.sh` | Dry-run observation script |
-| `tests/` | Replay tests + dry-run regressions (no live fixtures) |
-| `config.example.json` | Empty-template example |
-| `requirements.txt` | Public dependencies |
-| `README.md`, `LICENSE` | Public docs |
-| `fastloop_trader.py` (dry-run mode only) | CLI for dry-run; live mode requires Pro configs |
-
----
-
-## Two-step migration plan
-
-### Step 1 — From the public repo, extract the Pro list to a branch
-
-```bash
-cd /Users/yuliang/poly/poly-hedging
-git checkout -b pro-migration
-
-# Delete the Pro-only paths from this branch's tree
-git rm -r accounts/ strategy/ smart_money/ scheduler/ main/ state/ notifications/
-
-# Rewrite `strategy/` and the CLI to refuse live mode (no Pro configs available)
-# This is a code change — keep dry-run path intact, but error if --live is passed.
-
-git commit -m "split: extract Pro-only modules (migrated to poly-hedging-pro)"
-git push origin pro-migration
+if __name__ == "__main__":
+    key = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
+        "POLY_PRO_LICENSE_KEY", ""
+    )
+    print("✓ Valid" if verify_license(key) else "✗ Invalid")
 ```
 
-### Step 2 — Create the Pro repo from the original `main`
+`tools/__init__.py` re-exports this as `require_pro_license()`:
 
-```bash
-# Clone the original main as poly-hedging-pro
-git clone https://github.com/ylyl6561/poly-hedging.git poly-hedging-pro
-cd poly-hedging-pro
-git remote set-url origin git@github.com:ylyl6561/poly-hedging-pro.git
+```python
+# tools/__init__.py
+from .verify_license import verify_license
 
-# Add the new Pro-only additions (templates/, ui/, replay/, notifiers/templates/)
-git add templates/ ui/ replay/ notifiers/templates/
-git commit -m "pro: add production templates + UI + replay"
-git push -u origin main
-
-# Now flip the public repo's default branch to pro-migration:
-gh repo edit ylyl6561/poly-hedging --default-branch pro-migration
-gh repo edit ylyl6561/poly-hedging --delete-branch main
+def require_pro_license() -> None:
+    """Import-side guard for Pro modules. Raise if no valid key."""
+    import os
+    key = os.environ.get("POLY_PRO_LICENSE_KEY", "").strip()
+    if not key or not verify_license(key):
+        raise RuntimeError(
+            "POLY_PRO_LICENSE_KEY missing or invalid — see README "
+            "#-get-the-toolkit to activate Pro tier."
+        )
 ```
 
----
+Pro modules start with:
+```python
+# accounts/__init__.py
+from tools import require_pro_license
 
-## Per-buyer invite (the actual delivery)
-
-See [`commercial/admin/launch-sop.md` § 4](../admin/launch-sop.md).
-
-```bash
-gh repo invite-user ylyl6561/poly-hedging-pro --user <buyer_github_username>
+def _require_pro_for_live():
+    """Called only when caller passes --live. Dry-run path stays free."""
+    import os, sys
+    if "--dry-run" in sys.argv or os.environ.get("DRY_RUN") == "1":
+        return
+    require_pro_license()
 ```
+
+So the dry-run / replay / read-the-code paths never ask for a key. Only
+real-money paths gate it. This keeps the free user-experience genuine.
 
 ---
 
 ## ⚠️ Don't forget before going live
 
-- [ ] `poly-hedging-pro` repo exists and is private
-- [ ] `poly-hedging` repo's default branch flipped to `pro-migration`
-- [ ] Public repo's README "Get the Toolkit" link points to Creem (already done)
-- [ ] Creem success URL = `https://github.com/ylyl6561/poly-hedging#-get-the-toolkit`
-- [ ] Creem sales notification email = `liangyu6561@gmail.com`
-- [ ] Test purchase flow end-to-end (Creem test mode) before flipping branch
+- [ ] Creem product "Issue license keys" turned on
+- [ ] `POLY_LICENSE_SECRET` set in your local `.env` (also in CI as a
+      GitHub Actions secret for tests). Creem embeds this in every key it
+      emits, so the secret **must match** between you and your CI.
+- [ ] `commercial/github-repo/README.md` "Get the Toolkit" section
+      matches the flow above (already done)
+- [ ] `commercial/landing/index.html` "Get the Toolkit" CTA links to
+      Creem; pricing card reflects single-tier $99 (already done)
+- [ ] `commercial/landing/index.html` code-preview shows
+      `git clone https://github.com/ylyl6561/poly-hedging.git` (already
+      done — was `poly-hedging-pro` previously)
+- [ ] Test purchase flow end-to-end in Creem test mode before flipping
+      the landing page live
+
+---
+
+## What changed vs. the previous plan
+
+The old plan: separate `poly-hedging-pro` private repo, invite each
+buyer as collaborator, send clone instructions.
+
+Why we switched: single-repo is simpler for both sides — buyer
+self-serves in <1 minute, founder doesn't send invites, no separate
+codebase to keep in sync. BSL 1.1 already permits source-visible +
+paid-runtime model (CockroachDB, Sentry, HashiCorp all do this), so
+the legal posture is unchanged.

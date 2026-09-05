@@ -117,34 +117,32 @@ What "hedging" means here:
 | `trading/`, `api/` | Free | CLOB SDK wrapper, Gamma + Data API client |
 | `notifications/` | Free | Notifier interface — production templates are in Pro |
 | `scripts/`, `tests/` | Free | Replay, backfill, ops, dry-run regressions |
-| `accounts/` | **Pro** | Wallet contexts, signing keys, multi-wallet pool |
-| `strategy/` (full impls) | **Pro** | Dual-wallet event strategy, path-score, executor, models |
-| `smart_money/` | **Pro** | Top-user scraping + copy-trade fan-out |
-| `scheduler/`, `main/` | **Pro** | Loop driver + cron-free heartbeat scheduling |
-| `templates/` | **Pro** | 3 production config templates (BTC 5m FastLoop, smart-money copy, dual-wallet hedge) |
-| `ui/hedging_calculator/` | **Pro** | Hedging calculator web UI |
-| `replay/pnl_attribution/` | **Pro** | PnL-attribution replay tool |
-| `notifiers/templates/` | **Pro** | Feishu / Discord / Telegram production notifier templates |
+| `accounts/` | Free | Wallet contexts, signing keys, multi-wallet pool |
+| `strategy/` (full impls) | Free | Dual-wallet event strategy, path-score, executor, models |
+| `smart_money/` | Free | Top-user scraping + copy-trade fan-out |
+| `scheduler/`, `main/` | Free | Loop driver + cron-free heartbeat scheduling |
+| `templates/` | Free | 3 production config templates (BTC 5m FastLoop, smart-money copy, dual-wallet hedge) |
+| `ui/hedging_calculator/` | Free | Hedging calculator web UI |
+| `replay/pnl_attribution/` | Free | PnL-attribution replay tool |
+| `notifiers/templates/` | Free | Feishu / Discord / Telegram production notifier templates |
 
-The Pro modules live in the private **`poly-hedging-pro`** repo. Free repo
-holds the public framework; Pro repo holds the production wiring.
+> All modules are public on `main`. The Pro tier doesn't gate by repo
+> access — it gates by **license key** at runtime. See "Get the
+> Toolkit" below. Dry-run paths stay free forever.
 
 ---
 
 ## 🚀 Quick Start
 
-After your **GitHub invite to `poly-hedging-pro` lands** (sent to your
-purchase email within 24 hours of payment), clone the Pro repo:
-
 ```bash
-git clone https://github.com/ylyl6561/poly-hedging-pro.git
-cd poly-hedging-pro
+git clone https://github.com/ylyl6561/poly-hedging.git
+cd poly-hedging
 
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 
-# try the BTC fast-loop in dry-run mode (no real money)
+# try the BTC fast-loop in dry-run mode (no real money, no license needed)
 python fastloop_trader.py
 
 # 15-minute paper observation
@@ -156,9 +154,8 @@ python replay_candidate_journal.py path/to/candidates.jsonl
 
 The runner writes logs and replay output under `runs/`.
 
-> Want to read the public framework only (no Pro code)?
-> Clone [`poly-hedging`](https://github.com/ylyl6561/poly-hedging) instead —
-> it's the open-core.
+For **production (real-money) mode**, you'll need a Pro license key
+from the "Get the Toolkit" section below.
 
 ---
 
@@ -229,10 +226,9 @@ python replay_candidate_journal.py # offline replay
 ## 💼 Get the Toolkit
 
 The **open-source core** (this repo) is free to read, fork, and run for
-personal/internal use under BSL 1.1. Production trading — the configs, the
-multi-wallet executor, the hedging UI, the PnL-attribution replay, and the
-onboarding — lives in the private **`poly-hedging-pro`** repo. To get
-access:
+personal/internal use under BSL 1.1. Production trading — live `--live`
+mode for the multi-wallet executor, the smart-money copy trader, and the
+scheduled hedge loop — is gated by a license key. To unlock Pro mode:
 
 ### Polymarket Trader Toolkit — **$99** (one-time)
 
@@ -243,35 +239,43 @@ walk through your setup live, ask anything, hedge anything you got wrong.
 Claimed in order of purchase; your license email includes the scheduling link.
 
 **Delivery:** after payment, you'll be redirected back to this README
-(public repo). Within 24 hours, you'll receive a **GitHub invitation
-to `poly-hedging-pro`** at the email used for payment. Accept the invite
-and clone with your GitHub account — that's it.
+(public repo) **and** receive an email with your unique **license key**.
+Activate the Pro tier in 30 seconds:
+
+```bash
+git clone https://github.com/ylyl6561/poly-hedging.git
+cd poly-hedging
+echo "POLY_PRO_LICENSE_KEY=YOUR_KEY_HERE" >> .env
+python fastloop_trader.py --live      # Pro unlocked
+```
 
 USDC on Polygon also accepted —
 see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
 
 ### Free vs Pro
 
-| | Free (this repo) | Pro ($99, `poly-hedging-pro`) |
+| | Free (this repo) | Pro ($99, license-key gated) |
 |---|---|---|
 | Read the source code | ✅ | ✅ |
 | Run BTC fast-loop dry-run | ✅ | ✅ |
-| Production config templates (3) | — | ✅ |
-| Multi-wallet `accounts/` pool | — | ✅ |
-| Dual-wallet event strategy (full impl) | — | ✅ |
-| Hedging calculator UI | — | ✅ |
-| PnL-attribution replay | — | ✅ |
-| Feishu / Discord / Telegram notifier templates | — | ✅ |
+| Use the hedging calculator UI | ✅ | ✅ |
+| PnL-attribution replay | ✅ | ✅ |
+| Production config templates (3) | ✅ (read + dry-run) | ✅ (production `--live`) |
+| Multi-wallet `accounts/` pool | ✅ (read) | ✅ (signs real orders) |
+| Dual-wallet event strategy (full impl) | ✅ (read) | ✅ (production `--live`) |
+| Smart-money copy trader | ✅ (dry-run) | ✅ (production `--live`) |
 | Live `--live` trading configs | — | ✅ |
+| Feishu / Discord / Telegram notifier templates | ✅ (read) | ✅ (live send) |
 | 1-hour onboarding call (first 20 buyers: 30-min) | — | ✅ |
 | 6 weeks of exclusive strategy updates | — | ✅ |
 | 12 months Discord support | — | ✅ |
 | White-label rights | — | ✅ (apply) |
 | Lifetime updates | — | ✅ |
 
-The Pro repo is a **drop-in replacement** for this one — same folder
-structure, same `python fastloop_trader.py` entry point. Pro just adds
-the wiring, configs, and UI on top.
+Pro mode unlocks with `POLY_PRO_LICENSE_KEY` in `.env`. Without it,
+`--live` exits with a clear message pointing back to this section.
+Dry-run, replay, the calculator, and source-code reading all keep
+working for free.
 
 ---
 

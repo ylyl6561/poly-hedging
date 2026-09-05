@@ -47,6 +47,21 @@ your content.
 "How I would have saved 6 months if I'd had this Polymarket toolkit from day one"
 — 12-tweet thread
 ```
+End with the scarcity anchor: "First 20 buyers get a free 30-min 1-on-1 call. 12 left as of this thread." (Or whatever the current count is.)
+
+### Track the bonus counter
+
+Maintain a `bonus-spots.csv` in the repo (gitignored) — when a sale lands:
+```
+order,buyer_handle,license_key,call_scheduled,notes
+1,@alice,ABCD-1234,2026-09-06T19:00,
+2,@bob,EFGH-5678,,
+3,...
+```
+
+When buyer #20 buys, immediately turn off the bonus banner on the landing page
+and update the marketing copy to: "Bonus slots claimed — thank you to the first 20." This
+keeps the offer honest and the urgency real (not a perpetual promise).
 
 ### Weeks 3-4: Conversion
 

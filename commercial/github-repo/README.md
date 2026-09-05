@@ -240,6 +240,10 @@ Includes:
 
 **→ [Buy on Creem — $99](https://www.creem.io/payment/prod_57iXo1dPa2qTXZxw0jQ0pB)**
 
+🎁 **First 20 buyers get a free 30-minute 1-on-1 onboarding call** — walk
+through your setup live, ask anything, hedge anything you got wrong. Claimed
+in order of purchase; your license email includes the scheduling link.
+
 USDC on Polygon also accepted —
 see [`commercial/pricing/payment.md`](commercial/pricing/payment.md).
 

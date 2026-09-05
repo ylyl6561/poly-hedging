@@ -8,7 +8,7 @@
 - Each tweet: post, then reply to it 2x in the next hour to boost algorithm reach
 - Use a tool like `twikit.com` or `charm.sh` for quick quote-tweet variants
 
-**Pricing to mention everywhere:** **$99 one-time**. No discount, no upsells — clean single-tier pricing keeps the funnel simple and the messaging honest.
+**Pricing to mention everywhere:** **$99 one-time**. No discount, no upsells — clean single-tier pricing keeps the funnel simple and the messaging honest. **Bonus for first 20 buyers:** free 30-min 1-on-1 onboarding call.
 
 ---
 
@@ -82,6 +82,8 @@
 > Built because we lost money first. Tested because we run it ourselves.
 >
 > $99 one-time. No subscription, no add-ons.
+>
+> First 20 buyers also get a free 30-min onboarding call (live, 1-on-1).
 >
 > GitHub: [GITHUB_LINK]
 > Landing: [TOOLKIT_LINK]

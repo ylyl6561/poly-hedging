@@ -23,3 +23,10 @@ market_quality_state.json
 replay.json
 daily_spend.json
 tests/
+
+# Founder-only runbooks (admin email, Creem links, license keys)
+commercial/admin/
+
+# Cloudflare Pages cache (contains account ID + build artefacts)
+.wrangler/
+**/.wrangler/

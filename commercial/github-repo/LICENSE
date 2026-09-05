@@ -1,0 +1,45 @@
+Business Source License 1.1
+
+Licensor:  Liang Yu (liangyu5)
+Licensed Work:  poly-hedging v1.x
+
+Change Date:  2030-01-01
+Change License:  Apache License 2.0
+
+Additional Use Grant:
+
+  You may use, modify, and distribute the Licensed Work for any purpose,
+  including commercial purposes, subject to the following conditions:
+
+  1. You may NOT sublicense, resell, or redistribute the Licensed Work as a
+     standalone product whose primary value is the software itself.
+
+  2. You may NOT remove or alter this license notice.
+
+  3. You may use the Licensed Work to operate your own internal trading
+     infrastructure, including generating revenue from trading activity.
+
+  4. For redistribution rights (including selling templates, hosting
+     services, or white-labeling), a separate commercial license is
+     required — see the toolkit homepage for details.
+
+For full terms, see: https://mariadb.com/bsl11/
+
+================================================================================
+
+NOTICE (Plain-language summary):
+
+✅ You CAN: run this on your own server, modify the code, trade with it,
+   build internal tools on top of it.
+
+✅ You CAN: include snippets (≤200 lines) in your own open-source project
+   with attribution.
+
+❌ You CANNOT: fork this repo and sell it as your own product.
+
+❌ You CANNOT: host it as a paid SaaS without a separate commercial license.
+
+📅 After January 1, 2030, each release automatically becomes Apache 2.0
+   and these restrictions expire.
+
+For commercial licensing: liangyu5@example.com
